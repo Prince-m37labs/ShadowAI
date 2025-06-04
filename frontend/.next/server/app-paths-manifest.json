@@ -1,0 +1,6 @@
+{
+  "/page": "app/page.js",
+  "/refactor/page": "app/refactor/page.js",
+  "/gitops/page": "app/gitops/page.js",
+  "/dashboard/page": "app/dashboard/page.js"
+}
