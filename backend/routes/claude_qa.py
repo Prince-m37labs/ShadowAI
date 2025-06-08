@@ -13,6 +13,7 @@ class QARequest(BaseModel):
 @router.post("/claude-qa")
 async def claude_qa(request: QARequest):
     headers = {
+        "x-api-key": os.getenv("ANTHROPIC_API_KEY"),
         "Authorization": f"Bearer {os.getenv('CLAUDE_API_KEY')}",
         "Content-Type": "application/json"
     }

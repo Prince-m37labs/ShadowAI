@@ -1,9 +1,16 @@
-from fastapi import FastAPI, Request
-from pydantic import BaseModel
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from routes.refactor import router as refactor_router
+from routes.docs_generator import router as docs_router
+from routes.security_check import router as security_router
+from routes.ask_qa import router as qa_router
+from routes.stack_familiarizer import router as stack_router
+from routes.gitops import router as gitops_router
+from routes.screen_assist import router as screen_assist_router
+from routes.history import router as history_router
+from dotenv import load_dotenv
 
-from routes.claude_qa import router as claude_qa_router  # <-- Existing import
-from routes.gitops import router as gitops_router        # <-- Add this import
+load_dotenv()
 
 app = FastAPI()
 
@@ -16,8 +23,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(claude_qa_router)  # <-- Existing line
-app.include_router(gitops_router)     # <-- Add this line
+app.include_router(refactor_router)
+app.include_router(docs_router)
+app.include_router(security_router)
+app.include_router(qa_router)
+app.include_router(stack_router)
+app.include_router(gitops_router)
+app.include_router(screen_assist_router)
+app.include_router(history_router)
 
 @app.get("/modules")
 def get_modules():
@@ -26,10 +39,14 @@ def get_modules():
         {"title": "Refactoring Engine", "description": "Clean up legacy code", "status": "coming-soon"},
     ]
 
-class CodeInput(BaseModel):
-    code: str
+@app.on_event("startup")
+async def list_routes():
+    print("Registered routes:")
+    for route in app.routes:
+        print(route.path)
 
-@app.post("/refactor")
-async def refactor_code(input: CodeInput):
-    # Just echoing for now — replace with actual logic later
-    return {"refactored": input.code[::-1]}  # For demo, reverses code
+@app.middleware("http")
+async def log_request_path(request, call_next):
+    print(f"[DEBUG] Incoming request path: {request.url.path}")
+    response = await call_next(request)
+    return response
