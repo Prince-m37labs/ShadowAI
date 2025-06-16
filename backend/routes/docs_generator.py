@@ -4,13 +4,37 @@ import httpx
 import os
 from time import perf_counter
 from db import save_to_history
+import asyncio
 
 router = APIRouter()
 
-GROQ_MODEL = "llama3-70b-8192"
-
 class GenerateDocsInput(BaseModel):
     code: str
+
+CLAUDE_MODEL = "claude-sonnet-4-20250514"
+MAX_RETRIES = 3
+TIMEOUT = 60.0  # Increased timeout to 60 seconds
+
+async def make_claude_request(client, headers, body, retry_count=0):
+    try:
+        response = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            headers=headers,
+            json=body,
+            timeout=TIMEOUT
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.TimeoutException as e:
+        if retry_count < MAX_RETRIES:
+            print(f"Timeout occurred, retrying... (attempt {retry_count + 1}/{MAX_RETRIES})")
+            await asyncio.sleep(1 * (retry_count + 1))  # Exponential backoff
+            return await make_claude_request(client, headers, body, retry_count + 1)
+        raise Exception(f"Claude API timed out after {MAX_RETRIES} retries: {str(e)}")
+    except httpx.HTTPStatusError as e:
+        raise Exception(f"Claude API returned HTTP error: {str(e)}")
+    except Exception as e:
+        raise Exception(f"Claude API failed: {str(e)}")
 
 @router.post("/generate-docs")
 async def generate_docs(input: GenerateDocsInput):
@@ -25,41 +49,53 @@ async def generate_docs(input: GenerateDocsInput):
         {input.code}
         """
     )
-    api_key = os.getenv("GROQ_API_KEY")
+
+    api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        return {"error": "GROQ_API_KEY not set in environment"}
+        return {"error": "ANTHROPIC_API_KEY not set in environment"}
+
     headers = {
-        "Authorization": f"Bearer {api_key}",
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json"
     }
+
     body = {
-        "model": GROQ_MODEL,
+        "model": CLAUDE_MODEL,
         "messages": [
             {"role": "user", "content": prompt}
         ],
         "max_tokens": 1024,
         "temperature": 0.5
     }
+
     start = perf_counter()
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers=headers,
-                json=body
-            )
-            response.raise_for_status()
-            data = response.json()
-            output = data["choices"][0]["message"]["content"]
-            response_time = (perf_counter() - start) * 1000
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+            data = await make_claude_request(client, headers, body)
+            
+            output = ""
+            for block in data.get("content", []):
+                if block.get("type") == "text":
+                    text = block.get("text", "")
+                    output += text
+
+            if not output:
+                output = f"[Claude ERROR] Unexpected response: {data}"
+
+            # Save to history
             save_to_history(
                 feature="docs-generator",
                 user_input=input.code,
                 claude_prompt=prompt,
                 claude_response=output,
-                response_time_ms=response_time,
-                metadata={"model": GROQ_MODEL}
+                response_time_ms=(perf_counter() - start) * 1000,
+                metadata={"model": CLAUDE_MODEL}
             )
+
             return {"docs": output}
+
     except Exception as e:
-        return {"error": f"Groq failed: {str(e)}"}
+        error_msg = str(e)
+        print(f"Claude Exception: {error_msg}")
+        return {"error": error_msg}

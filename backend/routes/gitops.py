@@ -3,10 +3,15 @@ from pydantic import BaseModel
 import httpx
 import os
 from typing import List, Optional
+import asyncio
+from time import perf_counter
+from db import save_to_history
 
 router = APIRouter()
 
-GROQ_MODEL = "llama3-70b-8192"
+CLAUDE_MODEL = "claude-sonnet-4-20250514"
+MAX_RETRIES = 3
+TIMEOUT = 60.0  # Increased timeout to 60 seconds
 
 class GitOpsRequest(BaseModel):
     instruction: Optional[str] = None
@@ -15,6 +20,27 @@ class GitOpsRequest(BaseModel):
     branch_status: Optional[str] = None
     commit_messages: Optional[List[str]] = None
     pr_diff: Optional[str] = None
+
+async def make_claude_request(client, headers, body, retry_count=0):
+    try:
+        response = await client.post(
+            "https://api.anthropic.com/v1/messages",
+            headers=headers,
+            json=body,
+            timeout=TIMEOUT
+        )
+        response.raise_for_status()
+        return response.json()
+    except httpx.TimeoutException as e:
+        if retry_count < MAX_RETRIES:
+            print(f"Timeout occurred, retrying... (attempt {retry_count + 1}/{MAX_RETRIES})")
+            await asyncio.sleep(1 * (retry_count + 1))  # Exponential backoff
+            return await make_claude_request(client, headers, body, retry_count + 1)
+        raise Exception(f"Claude API timed out after {MAX_RETRIES} retries: {str(e)}")
+    except httpx.HTTPStatusError as e:
+        raise Exception(f"Claude API returned HTTP error: {str(e)}")
+    except Exception as e:
+        raise Exception(f"Claude API failed: {str(e)}")
 
 @router.post("/gitops")
 async def gitops_handler(request: GitOpsRequest):
@@ -30,7 +56,7 @@ async def gitops_handler(request: GitOpsRequest):
     # 2. Git Log or Branch Status Explainer
     elif request.git_log or request.branch_status:
         log = request.git_log or request.branch_status
-        prompt = f"A developer sent this Git log output. Help explain what’s going on and what they should do next:\n\n{log}"
+        prompt = f"A developer sent this Git log output. Help explain what's going on and what they should do next:\n\n{log}"
     # 3. Commit Hygiene Checker / PR Advisor
     elif request.commit_messages or request.pr_diff:
         if request.commit_messages:
@@ -44,31 +70,38 @@ async def gitops_handler(request: GitOpsRequest):
     else:
         return {"error": "No valid input provided."}
 
-    api_key = os.getenv("GROQ_API_KEY")
+    api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        return {"error": "GROQ_API_KEY not set in environment"}
+        return {"error": "ANTHROPIC_API_KEY not set in environment"}
+
     headers = {
-        "Authorization": f"Bearer {api_key}",
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json"
     }
+
     body = {
-        "model": GROQ_MODEL,
+        "model": CLAUDE_MODEL,
         "messages": [
             {"role": "user", "content": prompt}
         ],
         "max_tokens": 1024,
         "temperature": 0.5
     }
+
+    start = perf_counter()
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers=headers,
-                json=body
-            )
-            response.raise_for_status()
-            data = response.json()
-            output = data["choices"][0]["message"]["content"]
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+            data = await make_claude_request(client, headers, body)
+            
+            output = ""
+            for block in data.get("content", []):
+                if block.get("type") == "text":
+                    text = block.get("text", "")
+                    output += text
+
+            if not output:
+                output = f"[Claude ERROR] Unexpected response: {data}"
 
             # Dangerous Command Detector
             risky_patterns = ["--force", "git push origin main", "rm -rf .git"]
@@ -83,11 +116,24 @@ async def gitops_handler(request: GitOpsRequest):
             elif request.commit_messages or request.pr_diff:
                 suggestions.append(output.strip())
 
+            # Save to history
+            save_to_history(
+                feature="gitops",
+                user_input=str(request.dict()),
+                claude_prompt=prompt,
+                claude_response=output,
+                response_time_ms=(perf_counter() - start) * 1000,
+                metadata={"model": CLAUDE_MODEL}
+            )
+
             return {
                 "summary": summary,
                 "command": command,
                 "warnings": warnings,
                 "suggestions": suggestions
             }
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Groq failed: {str(e)}")
+        error_msg = str(e)
+        print(f"Claude Exception: {error_msg}")
+        raise HTTPException(status_code=500, detail=error_msg)

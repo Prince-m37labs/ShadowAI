@@ -1,6 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import type { HTMLAttributes } from 'react';
+
+interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
+  inline?: boolean;
+}
 
 export default function RefactorPage() {
   const [text, setText] = useState("");
@@ -36,9 +44,31 @@ export default function RefactorPage() {
       {output && (
         <div className="mt-6 bg-gray-100 p-4 rounded border border-gray-300">
           <h2 className="font-semibold mb-2">🧠 Refactored Code:</h2>
-          <pre className="bg-gray-800 text-green-200 p-3 rounded overflow-x-auto">
-            {output}
-          </pre>
+          <div className="prose prose-invert max-w-none">
+            <ReactMarkdown
+              components={{
+                code: ({ inline, className, children, ...props }: CodeComponentProps) => {
+                  const match = /language-(\w+)/.exec(className || '');
+                  return !inline && match ? (
+                    <SyntaxHighlighter
+                      style={vscDarkPlus as any}
+                      language={match[1]}
+                      PreTag="div"
+                      {...props}
+                    >
+                      {String(children).replace(/\n$/, '')}
+                    </SyntaxHighlighter>
+                  ) : (
+                    <code className={className} {...props}>
+                      {children}
+                    </code>
+                  );
+                }
+              }}
+            >
+              {output}
+            </ReactMarkdown>
+          </div>
         </div>
       )}
     </div>

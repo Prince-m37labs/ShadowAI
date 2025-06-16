@@ -61,14 +61,14 @@ export default function Home() {
         <div id="typewriter-multiline" className="flex flex-col items-start gap-0.5"></div>
       </div>
       <div className="max-w-3xl w-full p-10 mt-32 bg-gradient-to-br from-[#232946] to-[#393e6e] rounded-3xl shadow-2xl border border-[#232946] flex flex-col items-center gap-8 animate-fade-in">
-        <h1 className="text-4xl md:text-5xl font-extrabold text-[#f6f7fb] tracking-tight flex items-center gap-4 animate-bounce-slow">
-          <span className="text-5xl md:text-6xl animate-spin-slow">🚀</span>
+        <h1 className="text-4xl md:text-5xl font-extrabold text-[#f6f7fb] tracking-tight flex items-center gap-4 hover:animate-move-on-hover ">
+          <span className="text-5xl md:text-6xl animate-bounce-slow">🚀</span>
           Welcome to <span className="text-[#f4acb7] animate-gradient">ShadowAI</span>
-          <span className="text-5xl md:text-6xl animate-wiggle">✨</span>
+          
         </h1>
         <p className="text-lg md:text-xl text-[#a7adc6] text-center max-w-2xl animate-fade-in">
-          <span className="mr-2 animate-bounce">🤖</span>
-          Your all-in-one AI-powered developer assistant for code refactoring, documentation, security, GitOps, and more.
+          {/*<span className="mr-2 animate-bounce">🤖</span>*/}
+          Your all in one AI-powered developer assistant for code refactoring, documentation, security, GitOps, and more.
         </p>
         <div className="flex flex-wrap gap-6 justify-center mt-4 animate-fade-in">
           <Link href="/dashboard/refactor">

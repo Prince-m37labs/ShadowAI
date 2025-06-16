@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+import os
 from fastapi.middleware.cors import CORSMiddleware
 from routes.refactor import router as refactor_router
 from routes.docs_generator import router as docs_router
@@ -12,6 +13,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import db  # ensures DB connection is initialized and logs are printed
+
+print("📦 Claude API Key:", os.getenv("ANTHROPIC_API_KEY"))
+print("🛠 Mongo URI:", os.getenv("MONGODB_URI"))
 app = FastAPI()
 
 # Allow frontend to access backend

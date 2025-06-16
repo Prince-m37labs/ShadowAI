@@ -1,6 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import type { HTMLAttributes } from 'react';
+
+interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
+  inline?: boolean;
+}
 
 const PROMPT_TEMPLATES = [
   "Explain this code in simple terms.",
@@ -73,9 +81,31 @@ export default function PromptExplorerPage() {
       </button>
       <div className="mt-6">
         <h2 className="font-semibold mb-2">Claude's Response:</h2>
-        <pre className="bg-gray-100 border rounded p-4 min-h-[48px] whitespace-pre-wrap">
-          {loading ? 'Loading...' : response}
-        </pre>
+        <div className="prose prose-invert max-w-none">
+          <ReactMarkdown
+            components={{
+              code: ({ inline, className, children, ...props }: CodeComponentProps) => {
+                const match = /language-(\w+)/.exec(className || '');
+                return !inline && match ? (
+                  <SyntaxHighlighter
+                    style={vscDarkPlus as any}
+                    language={match[1]}
+                    PreTag="div"
+                    {...props}
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                ) : (
+                  <code className={className} {...props}>
+                    {children}
+                  </code>
+                );
+              }
+            }}
+          >
+            {loading ? 'Loading...' : response}
+          </ReactMarkdown>
+        </div>
       </div>
     </div>
   );

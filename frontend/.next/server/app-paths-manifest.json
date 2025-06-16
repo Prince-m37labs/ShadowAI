@@ -1,6 +1,7 @@
 {
+  "/screen-assist/page": "app/screen-assist/page.js",
+  "/dashboard/devqa/page": "app/dashboard/devqa/page.js",
   "/dashboard/refactor/page": "app/dashboard/refactor/page.js",
-  "/gitops/page": "app/gitops/page.js",
   "/page": "app/page.js",
-  "/screen-assist/page": "app/screen-assist/page.js"
+  "/gitops/page": "app/gitops/page.js"
 }

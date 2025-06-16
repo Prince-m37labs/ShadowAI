@@ -1,6 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import type { HTMLAttributes } from 'react';
+
+interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
+  inline?: boolean;
+}
 
 export default function DevQAChatPage() {
   const [question, setQuestion] = useState('');
@@ -10,23 +18,46 @@ export default function DevQAChatPage() {
   const [copied, setCopied] = useState(false);
 
   const handleSubmit = async () => {
+    if (!question.trim()) return;
+    
     setLoading(true);
     setError('');
     setAnswer('');
     setCopied(false);
+    
     try {
+      console.log('Sending request to backend...');
       const res = await fetch('http://localhost:8000/ask-qa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question: question.trim() }),
       });
-      if (!res.ok) throw new Error('Claude API error');
+      
+      console.log('Response status:', res.status);
       const data = await res.json();
+      console.log('Response data:', data);
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to get response');
+      }
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      if (!data.answer) {
+        throw new Error('No answer received from Claude');
+      }
+      
+      console.log('Setting answer:', data.answer);
       setAnswer(data.answer);
     } catch (e) {
-      setError((e as Error).message || 'Unknown error');
+      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
+      console.error('DevQA Error:', e);
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleCopy = () => {
@@ -48,7 +79,7 @@ export default function DevQAChatPage() {
     <div className="min-h-screen w-full bg-gradient-to-br from-[#232946] via-[#313866] to-[#a7c7e7] flex items-center justify-center py-12">
       <div className="max-w-2xl w-full p-8 bg-gradient-to-br from-[#232946] to-[#393e6e] rounded-2xl shadow-2xl border border-[#232946] animate-fade-in">
         <h1 className="text-3xl font-extrabold mb-6 text-[#f6f7fb] tracking-tight flex items-center gap-2">
-          <span className="animate-bounce">💬</span> Ask Anything (Dev QA)
+          <span className="animate">💬</span> Ask Anything (Dev QA)
         </h1>
         <textarea
           className="w-full border border-[#393e6e] rounded-lg p-3 bg-[#232946] text-[#f6f7fb] font-mono text-base transition min-h-[100px] focus:outline-none focus:ring-2 focus:ring-[#f4acb7] placeholder:text-[#f4acb7]/60"
@@ -107,9 +138,31 @@ export default function DevQAChatPage() {
                 </>
               )}
             </button>
-            <pre className="bg-[#181a2a] text-[#a7e7c7] p-4 rounded-lg overflow-x-auto whitespace-pre-wrap text-base font-mono border border-[#232946] transition-all duration-300 animate-fade-in">
-              {answer}
-            </pre>
+            <div className="prose prose-invert max-w-none">
+              <ReactMarkdown
+                components={{
+                  code: ({ inline, className, children, ...props }: CodeComponentProps) => {
+                    const match = /language-(\w+)/.exec(className || '');
+                    return !inline && match ? (
+                      <SyntaxHighlighter
+                        style={vscDarkPlus as any}
+                        language={match[1]}
+                        PreTag="div"
+                        {...props}
+                      >
+                        {String(children).replace(/\n$/, '')}
+                      </SyntaxHighlighter>
+                    ) : (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    );
+                  }
+                }}
+              >
+                {answer}
+              </ReactMarkdown>
+            </div>
           </div>
         )}
         <style jsx global>{`

@@ -1,6 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import type { HTMLAttributes } from 'react';
+
+interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
+  inline?: boolean;
+}
 
 export default function GitOpsPage() {
   const [task, setTask] = useState('');
@@ -10,23 +18,42 @@ export default function GitOpsPage() {
   const [copied, setCopied] = useState(false);
 
   const handleSubmit = async () => {
+    if (!task.trim()) return;
+    
     setLoading(true);
     setError('');
     setCommand('');
     setCopied(false);
+    
     try {
       const res = await fetch('http://localhost:8000/gitops', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ instruction: task }),
+        body: JSON.stringify({ instruction: task.trim() }),
       });
-      if (!res.ok) throw new Error('Claude API error');
+      
       const data = await res.json();
-      setCommand(data.command || data.result || 'No command generated.');
+      
+      if (!res.ok) {
+        throw new Error(data.detail || data.error || 'Failed to get response');
+      }
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      if (data.warnings && data.warnings.length > 0) {
+        setError(data.warnings.join('\n'));
+      }
+      
+      setCommand(data.command || data.summary || data.suggestions?.join('\n') || 'No command generated.');
     } catch (e) {
-      setError((e as Error).message || 'Unknown error');
+      const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
+      setError(errorMessage);
+      console.error('GitOps Error:', e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleCopy = () => {
@@ -47,8 +74,8 @@ export default function GitOpsPage() {
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#232946] via-[#313866] to-[#a7c7e7] flex items-center justify-center py-12">
       <div className="max-w-2xl w-full p-10 bg-gradient-to-br from-[#232946] to-[#393e6e] rounded-2xl shadow-2xl border border-[#232946] animate-fade-in text-center">
-        <h1 className="text-4xl font-extrabold mb-6 text-[#f6f7fb] tracking-tight flex items-center gap-3 justify-center animate-bounce-slow">
-          <span className="animate-spin-slow">🔀</span> GitOps via Claude <span className="animate-wiggle">🌳</span>
+        <h1 className="text-4xl font-extrabold mb-6 text-[#f6f7fb] tracking-tight flex items-center gap-3 justify-center animate">
+          <span className="animate">🔀</span> GitOps via Claude <span className="animate">🌳</span>
         </h1>
         <label className="block font-semibold mb-2 text-[#a7adc6] text-left">Describe your git task</label>
         <input
@@ -89,7 +116,7 @@ export default function GitOpsPage() {
         )}
         <div className="mt-8 text-left">
           <h2 className="font-semibold mb-2 text-[#a7adc6] flex items-center gap-2">
-            <span className="animate-bounce">🤖</span> AI-Generated Git Command:
+            <span className="animate">🤖</span> AI-Generated Git Command:
           </h2>
           <div className="relative">
             <button
@@ -106,9 +133,31 @@ export default function GitOpsPage() {
                 </>
               )}
             </button>
-            <pre className="bg-[#181a2a] text-[#a7e7c7] p-4 rounded-lg overflow-x-auto whitespace-pre-wrap text-base font-mono border border-[#232946] transition-all duration-300 animate-fade-in min-h-[48px]">
-              {command}
-            </pre>
+            <div className="prose prose-invert max-w-none min-h-[48px]">
+              <ReactMarkdown
+                components={{
+                  code: ({ inline, className, children, ...props }: CodeComponentProps) => {
+                    const match = /language-(\w+)/.exec(className || '');
+                    return !inline && match ? (
+                      <SyntaxHighlighter
+                        style={vscDarkPlus as any}
+                        language={match[1]}
+                        PreTag="div"
+                        {...props}
+                      >
+                        {String(children).replace(/\n$/, '')}
+                      </SyntaxHighlighter>
+                    ) : (
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    );
+                  }
+                }}
+              >
+                {command}
+              </ReactMarkdown>
+            </div>
           </div>
         </div>
         <style jsx global>{`

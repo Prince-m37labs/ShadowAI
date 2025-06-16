@@ -1,6 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import type { HTMLAttributes } from 'react';
+
+interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
+  inline?: boolean;
+}
 
 function generateSessionId() {
   return (
@@ -161,6 +169,7 @@ export default function ScreenAssistPage() {
     setError('');
     setAnalysis('');
     setSimple('');
+    
     const video = videoRef.current;
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
@@ -168,9 +177,11 @@ export default function ScreenAssistPage() {
     const ctx = canvas.getContext('2d');
     if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const base64 = canvas.toDataURL('image/png');
+    
     // Stop screen sharing
     video.srcObject && (video.srcObject as MediaStream).getTracks().forEach(track => track.stop());
     setRecording(false);
+    
     try {
       const finalRes = await fetch('http://localhost:8000/screen-assist', {
         method: 'POST',
@@ -182,34 +193,37 @@ export default function ScreenAssistPage() {
           is_final: true
         })
       });
-      // Defensive: check if response is JSON
+      
       const contentType = finalRes.headers.get('content-type');
-      if (!finalRes.ok || !contentType || !contentType.includes('application/json')) {
+      if (!contentType || !contentType.includes('application/json')) {
         const text = await finalRes.text();
-        console.error('Screen Assist: Non-JSON or error response', text);
-        setLoading(false);
-        setError('Screen Assist backend error: ' + finalRes.status);
-        return;
+        console.error('Screen Assist: Non-JSON response', text);
+        throw new Error('Invalid response format from server');
       }
+      
       const finalData = await finalRes.json();
-      console.log('Screen Assist: Final data', finalData);
-      setLoading(false);
-      if (finalData.error) {
-        setError(finalData.error);
-        setAnalysis('');
-        setSimple('');
-      } else {
-        setAnalysis(finalData.analysis || 'No analysis.');
-        setSimple(finalData.simple || '');
-        setTimeout(() => {
-          if (outputRef.current) outputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 300);
+      
+      if (!finalRes.ok) {
+        throw new Error(finalData.detail || finalData.error || 'Failed to analyze screen');
       }
+      
+      if (finalData.error) {
+        throw new Error(finalData.error);
+      }
+      
+      setAnalysis(finalData.analysis || 'No analysis available.');
+      setSimple(finalData.simple || '');
+      
+      setTimeout(() => {
+        if (outputRef.current) outputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+      
     } catch (e) {
+      const errorMessage = e instanceof Error ? e.message : 'Failed to analyze screen';
+      setError(errorMessage);
+      console.error('Screen Assist Error:', e);
+    } finally {
       setLoading(false);
-      setError('Failed to analyze screen. Please try again.');
-      // Debug: log the error
-      console.error('Screen Assist: Error in handleCaptureAnalyze', e);
     }
   };
 
@@ -262,10 +276,10 @@ export default function ScreenAssistPage() {
         <div className="w-1/3 flex flex-col gap-6 p-10 bg-[#232946]/80 border-r border-[#393e6e] min-h-[600px] justify-between">
           <div>
             <h1 className="text-3xl font-extrabold mb-4 text-[#f6f7fb] tracking-tight flex items-center gap-2">
-              <span className="animate-bounce">🪟</span> Screen Assist
+              <span className="animate">🪟</span> Screen Assist
             </h1>
             <p className="text-[#a7adc6] mb-6 text-sm">Capture your screen, scroll automatically, and let ShadowAI analyze everything you see.</p>
-            <label className="block font-semibold mb-2 text-[#a7adc6]">Describe what you’re stuck on <span className="text-[#f4acb7]">(required)</span></label>
+            <label className="block font-semibold mb-2 text-[#a7adc6]">Describe what you're stuck on <span className="text-[#f4acb7]">(required)</span></label>
             <textarea
               className="w-full border border-[#393e6e] rounded-lg p-3 bg-[#232946] text-[#f6f7fb] font-mono text-base transition min-h-[80px] focus:outline-none focus:ring-2 focus:ring-[#f4acb7] placeholder:text-[#f4acb7]/60 mb-2"
               rows={4}
@@ -352,7 +366,31 @@ export default function ScreenAssistPage() {
                   )}
                 </button>
               </div>
-              <div className="text-[#f6f7fb] text-base w-full" style={{whiteSpace: 'pre-wrap', wordBreak: 'break-word'}}>{simple}</div>
+              <div className="prose prose-invert max-w-none">
+                <ReactMarkdown
+                  components={{
+                    code: ({ inline, className, children, ...props }: CodeComponentProps) => {
+                      const match = /language-(\w+)/.exec(className || '');
+                      return !inline && match ? (
+                        <SyntaxHighlighter
+                          style={vscDarkPlus as any}
+                          language={match[1]}
+                          PreTag="div"
+                          {...props}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      ) : (
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      );
+                    }
+                  }}
+                >
+                  {simple}
+                </ReactMarkdown>
+              </div>
             </div>
           )}
         </div>

@@ -4,7 +4,9 @@ pydantic
 httpx
 python-dotenv
 pymongo
-easyocr
+paddleocr
+paddlepaddle
 opencv-python
 numpy
 Pillow
+markdown2
