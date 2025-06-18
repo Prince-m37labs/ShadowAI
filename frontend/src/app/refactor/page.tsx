@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { HTMLAttributes } from 'react';
+import HomeButton from '../dashboard/components/HomeButton';
 
 interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
   inline?: boolean;
@@ -27,6 +28,7 @@ export default function RefactorPage() {
 
   return (
     <div className="p-4">
+      <HomeButton />
       <h1 className="text-xl font-semibold">🛠 Refactor Code</h1>
       <textarea
         className="mt-4 w-full border p-2"

@@ -16,6 +16,11 @@ MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017")
 def get_mongo_client():
     try:
         client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+        # Log connection type
+        if "mongodb+srv" in MONGODB_URI:
+            logger.info("Connecting to MongoDB Atlas.")
+        else:
+            logger.info("Connecting to local MongoDB instance.")
         # Verify the connection
         client.admin.command('ping')
         logger.info("Successfully connected to MongoDB")
@@ -29,6 +34,26 @@ try:
     client = get_mongo_client()
     db = client["shadowai"]
     history_collection = db["history"]
+    
+    # Create text index if it doesn't exist
+    def ensure_text_index():
+        try:
+            # Check if text index exists
+            existing_indexes = history_collection.list_indexes()
+            has_text_index = any(index.get('name') == 'input_text_metadata.context_text' 
+                               for index in existing_indexes)
+            
+            if not has_text_index:
+                logger.info("Creating text index on history collection...")
+                history_collection.create_index([
+                    ("input", "text"),
+                    ("metadata.context", "text")
+                ], name="input_text_metadata.context_text")
+                logger.info("Text index created successfully")
+        except Exception as e:
+            logger.error(f"Failed to create text index: {e}")
+    
+    ensure_text_index()
     logger.info("MongoDB collections initialized successfully")
 except Exception as e:
     logger.error(f"Failed to initialize MongoDB collections: {e}")
@@ -137,3 +162,42 @@ def get_history(
         if end_date:
             query["timestamp"]["$lte"] = end_date
     return list(history_collection.find(query).sort("timestamp", -1).limit(limit))
+
+
+# Retrieve similar history using MongoDB text search
+async def find_similar_history(feature: str, user_input: str, context: str, score_threshold: float = 2.0):
+    from pymongo import TEXT
+
+    try:
+        # Ensure text index exists on input and metadata fields (run this manually once in DB):
+        # db.history.create_index([("input", TEXT), ("metadata.context", TEXT)])
+
+        combined_query = f"{user_input} {context}"
+        logger.info(f"[Cache Lookup] Searching for similar history with query: {combined_query[:100]}...")
+        
+        # Use run_in_executor for MongoDB operations
+        result = await asyncio.get_running_loop().run_in_executor(
+            None,
+            lambda: history_collection.find_one(
+            {
+                "$text": {"$search": combined_query},
+                "feature": feature
+            },
+            sort=[("score", {"$meta": "textScore"})],
+            projection={"claude_response": 1, "input": 1, "score": {"$meta": "textScore"}}
+            )
+        )
+
+        if result and result.get("score", 0) > score_threshold:
+            logger.info(f"[Cache Hit] Found similar query in DB with score {result['score']:.2f}")
+            logger.info(f"[Cache Hit] Original input: {result['input'][:100]}...")
+            return result["claude_response"]
+        else:
+            if result:
+                logger.info(f"[Cache Miss] Found result but score {result.get('score', 0):.2f} below threshold {score_threshold}")
+            else:
+                logger.info("[Cache Miss] No similar history found in database")
+    except Exception as e:
+        logger.warning(f"[Cache Lookup] Failed to search similar history: {e}")
+
+    return None

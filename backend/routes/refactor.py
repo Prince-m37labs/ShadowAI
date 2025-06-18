@@ -4,13 +4,16 @@ import httpx
 import os
 from time import perf_counter
 from db import save_to_history
+from db import find_similar_history
 import asyncio
+
 
 router = APIRouter()
 
 class RefactorInput(BaseModel):
     code: str
     mode: str = "readability"
+    target_language: str = "same"  # Default to same language as input
 
 CLAUDE_MODEL = "claude-sonnet-4-20250514"
 
@@ -40,6 +43,15 @@ async def make_claude_request(client, headers, body, retry_count=0):
 
 @router.post("/refactor")
 async def refactor_code(input: RefactorInput):
+    if len(input.code.split()) > 4:
+        context = f"{input.code} {input.mode}"
+        if input.mode == 'modern':
+            context += f" {input.target_language}"
+        cached = await find_similar_history("refactor", input.code, context)
+        if cached:
+            print("[DEBUG] Returning cached response from MongoDB...")
+            return {"refactored": cached}
+
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         return {"error": "ANTHROPIC_API_KEY not set in environment"}
@@ -50,40 +62,44 @@ async def refactor_code(input: RefactorInput):
         "Content-Type": "application/json"
     }
 
+    # Only include language conversion for modern mode
+    language_conversion = f"Convert the code to {input.target_language} and " if input.mode == 'modern' and input.target_language != 'same' else ""
+    
     body = {
         "model": CLAUDE_MODEL,
         "messages": [
             {
                 "role": "user",
-                "content": f"""Refactor the following code according to these specific guidelines for {input.mode}:
+                "content": f"""You are an expert code refactoring assistant. {language_conversion}Refactor the provided code according to the specified mode.
 
-For readability mode:
-- Improve code readability and maintainability
-- Add clear comments and documentation
-- Use meaningful variable and function names
-- Break down complex logic into smaller, well-named functions
-- Follow consistent formatting and style
+Mode: {input.mode}
 
-For performance mode:
-- Optimize code execution speed
-- Reduce time and space complexity
-- Minimize redundant operations
-- Use efficient data structures and algorithms
-- Cache results where beneficial
+If the mode is 'modern':
+  - Convert the code to modern JavaScript/TypeScript practices
+  - Use ES6+ features, async/await, arrow functions, destructuring, etc.
+  - {f"Convert the code to {input.target_language}" if input.target_language != 'same' else "Keep the same programming language but modernize the syntax"}
+If the mode is 'clean', improve code readability and structure.
+If the mode is 'optimize', focus on performance improvements.
+If the mode is 'security', focus on security improvements and vulnerability fixes.
 
-For modern ES6+ style:
-- Use modern JavaScript/TypeScript features
-- Implement arrow functions, destructuring, and spread operators
-- Use async/await instead of callbacks
-- Utilize template literals and optional chaining
-- Apply modern array methods (map, filter, reduce)
+IMPORTANT: Keep your response focused and to the point. Include:
 
-Here's the code to refactor:
+1. A brief explanation of the changes made (1-2 paragraphs max)
+   - Use simple, professional language
+   - Focus on the key improvements
+   - Use emojis sparingly for clarity
 
-{input.code}"""
+2. The refactored code in a code block with proper language specification
+   - Add brief comments
+   - Keep the code clean and readable
+
+Code to refactor:
+{input.code}
+
+Keep the total response under 500 words and focus on the most important changes."""
             }
         ],
-        "max_tokens": 1024,
+        "max_tokens": 2048,
         "temperature": 0.5
     }
 
@@ -108,7 +124,11 @@ Here's the code to refactor:
                 claude_prompt=body["messages"][0]["content"],
                 claude_response=output,
                 response_time_ms=(perf_counter() - start) * 1000,
-                metadata={"mode": input.mode, "model": CLAUDE_MODEL}
+                metadata={
+                    "mode": input.mode,
+                    "target_language": input.target_language if input.mode == 'modern' else None,
+                    "model": CLAUDE_MODEL
+                }
             )
 
             return {"refactored": output}

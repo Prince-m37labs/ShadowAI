@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { HTMLAttributes } from 'react';
+import HomeButton from '../components/HomeButton';
 
 interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
   inline?: boolean;
@@ -34,23 +35,42 @@ export default function DevQAChatPage() {
       });
       
       console.log('Response status:', res.status);
-      const data = await res.json();
-      console.log('Response data:', data);
       
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to get response');
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to get response');
+      }
+
+      // Handle streaming response
+      const reader = res.body?.getReader();
+      if (!reader) {
+        throw new Error('No reader available');
+      }
+
+      let fullText = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = new TextDecoder().decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            // Handle error messages
+            if (data.startsWith('[ERROR]')) {
+              console.error('Streaming error:', data);
+              throw new Error('An error occurred during streaming.');
+            }
+            // Add the text content directly
+            fullText += data;
+            setAnswer(fullText);
+          }
+        }
       }
       
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      
-      if (!data.answer) {
-        throw new Error('No answer received from Claude');
-      }
-      
-      console.log('Setting answer:', data.answer);
-      setAnswer(data.answer);
+      console.log('Setting answer:', fullText);
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
       console.error('DevQA Error:', e);
@@ -77,6 +97,7 @@ export default function DevQAChatPage() {
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#232946] via-[#313866] to-[#a7c7e7] flex items-center justify-center py-12">
+      <HomeButton />
       <div className="max-w-2xl w-full p-8 bg-gradient-to-br from-[#232946] to-[#393e6e] rounded-2xl shadow-2xl border border-[#232946] animate-fade-in">
         <h1 className="text-3xl font-extrabold mb-6 text-[#f6f7fb] tracking-tight flex items-center gap-2">
           <span className="animate">💬</span> Ask Anything (Dev QA)

@@ -11,6 +11,7 @@
   "dependencies": {
     "@types/dompurify": "^3.0.5",
     "dompurify": "^3.2.6",
+    "framer-motion": "^12.18.1",
     "marked": "^15.0.12",
     "next": "15.3.3",
     "react": "^19.0.0",

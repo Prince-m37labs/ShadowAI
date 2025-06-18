@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { HTMLAttributes } from 'react';
+import HomeButton from '../dashboard/components/HomeButton';
 
 interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
   inline?: boolean;
@@ -32,14 +33,45 @@ export default function PromptExplorerPage() {
     setLoading(true);
     setResponse('');
     try {
-      // Replace with your Claude endpoint as needed
-      const res = await fetch('http://localhost:8000/claude-qa', {
+      // Use the ask-qa endpoint instead of claude-qa
+      const res = await fetch('http://localhost:8000/ask-qa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context: '', question: prompt }),
+        body: JSON.stringify({ question: prompt, code: '' }),
       });
-      const data = await res.json();
-      setResponse(data.answer || data.content || 'No answer received.');
+      
+      if (!res.ok) {
+        throw new Error('Failed to get response');
+      }
+
+      // Handle streaming response
+      const reader = res.body?.getReader();
+      if (!reader) {
+        throw new Error('No reader available');
+      }
+
+      let fullText = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = new TextDecoder().decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            // Handle error messages
+            if (data.startsWith('[ERROR]')) {
+              console.error('Streaming error:', data);
+              throw new Error('An error occurred during streaming.');
+            }
+            // Add the text content directly
+            fullText += data;
+            setResponse(fullText);
+          }
+        }
+      }
     } catch (err) {
       setResponse('Error fetching response.');
     }
@@ -48,6 +80,7 @@ export default function PromptExplorerPage() {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
+      <HomeButton />
       <h1 className="text-2xl font-bold mb-4">Prompt Explorer</h1>
       <div className="mb-4">
         <label className="block font-medium mb-1">Choose a prompt template</label>

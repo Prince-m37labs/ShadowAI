@@ -5,21 +5,37 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { HTMLAttributes } from 'react';
+import HomeButton from '../components/HomeButton';
 
 interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
 	inline?: boolean;
 }
 
 const MODES = [
-	{ label: 'Readability', value: 'readability' },
-	{ label: 'Performance', value: 'performance' },
-	{ label: 'Modern ES6+ style', value: 'modern' },
+	{ label: 'Readability', value: 'clean' },
+	{ label: 'Performance', value: 'optimize' },
+	{ label: 'Security', value: 'security' },
+	{ label: 'Modern Style', value: 'modern' },
+];
+
+const LANGUAGES = [
+	{ label: 'Keep Original Language', value: 'same' },
+	{ label: 'Python', value: 'Python' },
+	{ label: 'JavaScript', value: 'JavaScript' },
+	{ label: 'TypeScript', value: 'TypeScript' },
+	{ label: 'Java', value: 'Java' },
+	{ label: 'C++', value: 'C++' },
+	{ label: 'Go', value: 'Go' },
+	{ label: 'Rust', value: 'Rust' },
+	{ label: 'Ruby', value: 'Ruby' },
+	{ label: 'PHP', value: 'PHP' },
 ];
 
 export default function RefactorPage() {
 	const [text, setText] = useState('');
 	const [output, setOutput] = useState('');
 	const [mode, setMode] = useState(MODES[0].value);
+	const [targetLanguage, setTargetLanguage] = useState(LANGUAGES[0].value);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState('');
 	const [copied, setCopied] = useState(false);
@@ -36,7 +52,11 @@ export default function RefactorPage() {
 			const res = await fetch('http://localhost:8000/refactor', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ code: text.trim(), mode }),
+				body: JSON.stringify({ 
+					code: text.trim(), 
+					mode,
+					target_language: targetLanguage
+				}),
 			});
 			
 			const data = await res.json();
@@ -80,6 +100,7 @@ export default function RefactorPage() {
 
 	return (
 		<div className="min-h-screen w-full bg-gradient-to-br from-[#232946] via-[#313866] to-[#a7c7e7] flex items-center justify-center py-12">
+			<HomeButton />
 			<div className="max-w-7xl w-full p-8 bg-gradient-to-br from-[#232946] to-[#393e6e] rounded-2xl shadow-2xl border border-[#232946] animate-fade-in">
 				<h1 className="text-3xl font-extrabold mb-6 text-[#f6f7fb] tracking-tight flex items-center gap-2">
 					<span className="animate">🛠️</span> Refactor Code
@@ -87,14 +108,21 @@ export default function RefactorPage() {
 				<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
 					{/* Input Section */}
 					<div className="flex flex-col h-[500px]">
-						<div className="mb-4">
+						<div className="grid grid-cols-2 gap-4 mb-4">
+							<div>
 							<label className="block font-semibold mb-2 text-[#a7adc6]">
 								Refactor Mode
 							</label>
 							<select
 								className="w-full border border-[#393e6e] rounded-lg p-2 bg-[#232946] text-[#f6f7fb] focus:outline-none focus:ring-2 focus:ring-[#f4acb7] transition"
 								value={mode}
-								onChange={(e) => setMode(e.target.value)}
+									onChange={(e) => {
+										setMode(e.target.value);
+										// Reset target language when switching away from modern mode
+										if (e.target.value !== 'modern') {
+											setTargetLanguage('same');
+										}
+									}}
 							>
 								{MODES.map((m) => (
 									<option
@@ -106,6 +134,29 @@ export default function RefactorPage() {
 									</option>
 								))}
 							</select>
+							</div>
+							{mode === 'modern' && (
+								<div>
+									<label className="block font-semibold mb-2 text-[#a7adc6]">
+										Target Language
+									</label>
+									<select
+										className="w-full border border-[#393e6e] rounded-lg p-2 bg-[#232946] text-[#f6f7fb] focus:outline-none focus:ring-2 focus:ring-[#f4acb7] transition"
+										value={targetLanguage}
+										onChange={(e) => setTargetLanguage(e.target.value)}
+									>
+										{LANGUAGES.map((lang) => (
+											<option
+												key={lang.value}
+												value={lang.value}
+												className="bg-[#232946] text-[#f6f7fb]"
+											>
+												{lang.label}
+											</option>
+										))}
+									</select>
+								</div>
+							)}
 						</div>
 						<div className="flex-1 relative">
 							<textarea

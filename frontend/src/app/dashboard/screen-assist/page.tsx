@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { HTMLAttributes } from 'react';
+import HomeButton from '../components/HomeButton';
 
 interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
   inline?: boolean;
@@ -102,33 +103,57 @@ export default function ScreenAssistPage() {
     }
   };
 
-  // Capture 5 frames at 2s intervals, then send all to backend
+  // Capture 3 frames at 1s intervals, then send all to backend (reduced from 5 frames at 2s)
   const captureMultipleFrames = async () => {
     if (!videoRef.current || !canvasRef.current) return;
     setLoading(true);
     setFramesDone(false);
     let frames: string[] = [];
-    for (let i = 0; i < 5; i++) {
+    
+    console.log('[DEBUG] Starting frame capture');
+    
+    for (let i = 0; i < 3; i++) { // Reduced from 5 to 3 frames
       if (!videoRef.current || !canvasRef.current) break;
       const video = videoRef.current;
       const canvas = canvasRef.current;
+      
+      // Ensure video is ready
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        console.log('[DEBUG] Video not ready, waiting...');
+        await new Promise(res => setTimeout(res, 500));
+        continue;
+      }
+      
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
-      if (ctx) ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const base64 = canvas.toDataURL('image/png');
-      frames.push(base64);
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const base64 = canvas.toDataURL('image/png', 0.8); // Reduced quality for faster processing
+        frames.push(base64);
+        console.log(`[DEBUG] Captured frame ${i + 1}/3`);
+      }
       setProgress(i + 1);
-      await new Promise(res => setTimeout(res, 2000));
+      await new Promise(res => setTimeout(res, 1000)); // Reduced from 2000ms to 1000ms
     }
+    
     // Stop screen sharing
-    videoRef.current.srcObject && (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+    if (videoRef.current?.srcObject) {
+      (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+    }
     setRecording(false);
-    // Send all frames to backend for analysis
+    
+    console.log(`[DEBUG] Captured ${frames.length} frames, sending to backend`);
+    
+    // Send all frames to backend for analysis with timeout
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+
       const finalRes = await fetch('http://localhost:8000/screen-assist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           image_base64_list: frames,
           query,
@@ -136,20 +161,28 @@ export default function ScreenAssistPage() {
           is_final: true
         })
       });
+
+      clearTimeout(timeoutId);
+      
       const contentType = finalRes.headers.get('content-type');
       if (!finalRes.ok || !contentType || !contentType.includes('application/json')) {
         const text = await finalRes.text();
+        console.error('[DEBUG] Backend error response:', text);
         setLoading(false);
         setError('Screen Assist backend error: ' + finalRes.status);
         return;
       }
+      
       const finalData = await finalRes.json();
       setLoading(false);
+      
       if (finalData.error) {
+        console.error('[DEBUG] Backend returned error:', finalData.error);
         setError(finalData.error);
         setAnalysis('');
         setSimple('');
       } else {
+        console.log('[DEBUG] Successfully received analysis');
         setAnalysis(finalData.analysis || 'No analysis.');
         setSimple(finalData.simple || '');
         setTimeout(() => {
@@ -157,6 +190,7 @@ export default function ScreenAssistPage() {
         }, 300);
       }
     } catch (e) {
+      console.error('[DEBUG] Network error:', e);
       setLoading(false);
       setError('Failed to analyze screen. Please try again.');
     }
@@ -269,8 +303,19 @@ export default function ScreenAssistPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let timeout: NodeJS.Timeout;
+    if (loading) {
+      timeout = setTimeout(() => {
+        setError('⚠️ Taking longer than expected. Claude may be busy...');
+      }, 15000);
+    }
+    return () => clearTimeout(timeout);
+  }, [loading]);
+
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-[#232946] via-[#313866] to-[#a7c7e7] flex flex-col items-center justify-center py-12">
+      <HomeButton />
       <div className="max-w-7xl w-full p-0 bg-gradient-to-br from-[#232946] to-[#393e6e] rounded-2xl shadow-2xl border border-[#232946] animate-fade-in flex flex-row gap-0 overflow-hidden">
         {/* Left: Query Input and Controls */}
         <div className="w-1/3 flex flex-col gap-6 p-10 bg-[#232946]/80 border-r border-[#393e6e] min-h-[600px] justify-between">
@@ -314,7 +359,7 @@ export default function ScreenAssistPage() {
               <>
                 <video ref={videoRef} className="hidden" autoPlay playsInline muted />
                 <canvas ref={canvasRef} className="hidden" />
-                <div className="text-[#a7adc6] text-sm mt-4">Capturing screen... <b>{progress}</b> frames sent</div>
+                <div className="text-[#a7adc6] text-sm mt-4">Capturing screen... <b>{progress}/3</b> frames sent</div>
                 {framesDone && (
                   <div className="mt-2 text-[#f4acb7] text-xs font-semibold">Frame captured! If you have more code, scroll down and click <b>Capture & Analyze</b> again. When done, click <b>Capture & Analyze</b> to finish and analyze.</div>
                 )}
@@ -344,7 +389,7 @@ export default function ScreenAssistPage() {
               <span className="animate-spin inline-block text-xl">🧠</span> Analyzing captured text with Claude...
             </div>
           )}
-          {simple && !loading && (
+          {(simple || analysis) && !loading && (
             <div
               ref={outputRef}
               className="w-full h-full bg-gradient-to-br from-[#232946] to-[#393e6e] p-8 rounded-2xl border border-[#f4acb7] shadow-lg animate-fade-in relative flex flex-col justify-start"
@@ -388,7 +433,7 @@ export default function ScreenAssistPage() {
                     }
                   }}
                 >
-                  {simple}
+                  {simple || analysis}
                 </ReactMarkdown>
               </div>
             </div>
