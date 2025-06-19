@@ -118,6 +118,22 @@ A comprehensive AI-powered development assistant that combines a modern Next.js 
 
 4. **Open your browser**:
    Navigate to [http://localhost:3000](http://localhost:3000)
+## 🔥 Quick Start with `start.sh`
+
+To start both the backend (FastAPI) and frontend (Next.js) servers at once, use the provided `start.sh` script:
+
+```bash
+./start.sh
+```
+
+- This script will:
+  - Activate the Python virtual environment and start the FastAPI backend on port 8000
+  - Start the Next.js frontend on port 3000
+  - Automatically stop both servers when you press Ctrl+C
+
+> **Note:**
+> - Make sure you have run all installation steps for both backend and frontend before using this script.
+> - On macOS/Linux, you may need to make the script executable: `chmod +x start.sh`
 
 ## 🏗 Project Structure
 
