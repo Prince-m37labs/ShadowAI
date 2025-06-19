@@ -1,6 +1,6 @@
 # AI Development Assistant
 
-A comprehensive AI-powered development assistant that combines a modern Next.js frontend with a FastAPI backend to provide intelligent code refactoring, Q&A capabilities, Git operations, and screen assistance features.
+A comprehensive AI-powered development assistant that combines a modern Next.js frontend with a FastAPI backend to provide intelligent code refactoring, Q&A capabilities, Git operations, and advanced screen assistance features.
 
 ## 🚀 Features
 
@@ -10,7 +10,7 @@ A comprehensive AI-powered development assistant that combines a modern Next.js 
 - **Code Explorer**: Browse and analyze code repositories
 - **Git Operations**: Manage Git workflows with AI assistance
 - **Refactoring Tools**: AI-powered code refactoring interface
-- **Screen Assistant**: Visual code assistance and analysis
+- **Screen Assistant**: Advanced screen capture and analysis system
 - **Markdown Support**: Rich text rendering with syntax highlighting
 - **Responsive Design**: Optimized for desktop and mobile devices
 
@@ -19,7 +19,7 @@ A comprehensive AI-powered development assistant that combines a modern Next.js 
 - **Code Refactoring**: Advanced code analysis and refactoring engine
 - **Q&A System**: Intelligent question-answering about code
 - **Git Operations**: Automated Git workflow management
-- **Screen Assistance**: Computer vision and OCR capabilities
+- **Screen Assistance**: Multi-frame screen capture with OCR analysis
 - **History Management**: Track and manage user interactions
 - **MongoDB Integration**: Persistent data storage
 - **CORS Support**: Cross-origin resource sharing for frontend integration
@@ -33,13 +33,14 @@ A comprehensive AI-powered development assistant that combines a modern Next.js 
 - **UI Components**: Framer Motion
 - **Markdown**: React Markdown with syntax highlighting
 - **Security**: DOMPurify for XSS protection
+- **Screen Capture**: HTML5 Canvas API with MediaDevices
 
 ### Backend
 - **Framework**: FastAPI
 - **Language**: Python
 - **Database**: MongoDB with PyMongo
 - **AI**: Claude API (Anthropic)
-- **Computer Vision**: OpenCV, PaddleOCR
+- **Computer Vision**: OpenCV, PaddleOCR, Tesseract OCR
 - **Image Processing**: Pillow, NumPy
 - **Server**: Uvicorn
 
@@ -50,6 +51,7 @@ A comprehensive AI-powered development assistant that combines a modern Next.js 
 - Python 3.8+
 - MongoDB instance
 - Claude API key
+- Tesseract OCR (for screen analysis)
 
 ### Backend Setup
 
@@ -69,14 +71,26 @@ A comprehensive AI-powered development assistant that combines a modern Next.js 
    pip install -r requirements.txt
    ```
 
-4. **Set up environment variables**:
+4. **Install Tesseract OCR** (for screen analysis):
+   ```bash
+   # macOS
+   brew install tesseract
+   
+   # Ubuntu/Debian
+   sudo apt-get install tesseract-ocr
+   
+   # Windows
+   # Download from https://github.com/UB-Mannheim/tesseract/wiki
+   ```
+
+5. **Set up environment variables**:
    Create a `.env` file in the backend directory:
    ```env
    ANTHROPIC_API_KEY=your_claude_api_key_here
    MONGODB_URI=your_mongodb_connection_string
    ```
 
-5. **Run the backend server**:
+6. **Run the backend server**:
    ```bash
    uvicorn main:app --reload --host 0.0.0.0 --port 8000
    ```
@@ -123,15 +137,16 @@ A comprehensive AI-powered development assistant that combines a modern Next.js 
 ├── frontend/
 │   ├── src/
 │   │   ├── app/             # Next.js app directory
-│   │   │   ├── dashboard/   # Dashboard page
+│   │   │   ├── dashboard/   # Dashboard pages
+│   │   │   │   ├── ask-qa/  # Q&A interface
+│   │   │   │   ├── refactor/ # Refactoring interface
+│   │   │   │   ├── gitops/  # Git operations interface
+│   │   │   │   └── screen-assist/ # Screen assistant interface
 │   │   │   ├── explorer/    # Code explorer page
-│   │   │   ├── gitops/      # Git operations page
-│   │   │   ├── refactor/    # Refactoring page
-│   │   │   ├── screen-assist/ # Screen assistant page
+│   │   │   ├── components/  # Shared components
 │   │   │   ├── layout.tsx   # Root layout
 │   │   │   ├── page.tsx     # Home page
 │   │   │   └── globals.css  # Global styles
-│   │   └── components/      # React components
 │   ├── public/              # Static assets
 │   ├── package.json         # Node.js dependencies
 │   └── next.config.ts       # Next.js configuration
@@ -146,9 +161,40 @@ A comprehensive AI-powered development assistant that combines a modern Next.js 
 - `POST /refactor/` - Code refactoring
 - `POST /qa/` - Question answering
 - `POST /gitops/` - Git operations
-- `POST /screen-assist/` - Screen assistance
+- `POST /screen-assist/` - Screen assistance with OCR
 - `GET /history/` - Get interaction history
 - `POST /history/` - Save interaction
+
+## 🖥️ Screen Assistant Features
+
+The Screen Assistant is a sophisticated tool that provides:
+
+### **Multi-Frame Capture**
+- Captures 5 frames at 2-second intervals
+- Automatic screen sharing detection
+- Canvas-based image processing
+- High-quality PNG export
+
+### **Advanced OCR Processing**
+- **Tesseract OCR**: Primary text extraction
+- **PaddleOCR**: Alternative OCR engine
+- **Image Preprocessing**: 
+  - Adaptive thresholding for varying brightness
+  - Morphological operations for text clarity
+  - Bilateral filtering for noise reduction
+  - CLAHE (Contrast Limited Adaptive Histogram Equalization)
+
+### **AI-Powered Analysis**
+- Sends processed screenshots to Claude API
+- Context-aware code analysis
+- Bug detection and suggestions
+- Code improvement recommendations
+
+### **User Experience**
+- Real-time progress tracking
+- Error handling for screen sharing permissions
+- Cross-browser compatibility
+- Automatic session management
 
 ## 🚀 Development
 
@@ -198,11 +244,19 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 1. **Start both servers** (backend on port 8000, frontend on port 3000)
 2. **Open the application** in your browser at `http://localhost:3000`
 3. **Navigate through different modules**:
-   - Dashboard: Overview and quick actions
-   - Explorer: Browse and analyze code
-   - GitOps: Manage Git workflows
-   - Refactor: AI-powered code refactoring
-   - Screen Assistant: Visual code assistance
+   - **Dashboard**: Overview and quick actions
+   - **Explorer**: Browse and analyze code
+   - **GitOps**: Manage Git workflows
+   - **Refactor**: AI-powered code refactoring
+   - **Screen Assistant**: Capture and analyze code screenshots
+
+### Screen Assistant Workflow
+1. Click "Start Screen Capture"
+2. Select the screen/window to share
+3. Bring your code editor to the front
+4. System captures 5 frames automatically
+5. AI analyzes the code and provides insights
+6. View detailed analysis and recommendations
 
 ## 🤝 Contributing
 
@@ -225,9 +279,11 @@ If you encounter any issues or have questions:
 
 ## 🔮 Roadmap
 
-- [ ] Enhanced code analysis capabilities
+- [ ] Enhanced OCR accuracy for different code themes
+- [ ] Real-time screen analysis streaming
 - [ ] Integration with more AI models
 - [ ] Advanced Git workflow automation
 - [ ] Real-time collaboration features
 - [ ] Mobile app development
-- [ ] Plugin system for extensibility 
+- [ ] Plugin system for extensibility
+- [ ] Code snippet extraction and sharing 

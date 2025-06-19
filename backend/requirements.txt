@@ -10,3 +10,7 @@ opencv-python
 numpy
 Pillow
 markdown2
+pytesseract
+scikit-image
+scipy
+matplotlib

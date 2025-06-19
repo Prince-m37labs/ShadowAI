@@ -1,22 +1,140 @@
 'use client';
 
 import React, { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import { StreamingResponse } from '../components/StreamingResponse';
 import HomeButton from '../components/HomeButton';
+
+// Custom component to render text and code blocks
+const TextCodeRenderer = ({ content }: { content: string }) => {
+  // First try to split by markdown code blocks
+  let blocks = content.split(/(```[\s\S]*?```)/g);
+  
+  // If no markdown blocks found, try to detect code patterns
+  if (blocks.length === 1 && !blocks[0].includes('```')) {
+    // Split by common code patterns
+    const codePatterns = [
+      /(import\s+[\s\S]*?;?\n)/g,
+      /(from\s+[\s\S]*?import[\s\S]*?\n)/g,
+      /(def\s+\w+[\s\S]*?:\n[\s\S]*?)(?=\n\w|\n$)/g,
+      /(class\s+\w+[\s\S]*?:\n[\s\S]*?)(?=\n\w|\n$)/g,
+      /(const\s+\w+[\s\S]*?;?\n)/g,
+      /(let\s+\w+[\s\S]*?;?\n)/g,
+      /(var\s+\w+[\s\S]*?;?\n)/g,
+      /(function\s+\w+[\s\S]*?{[\s\S]*?})/g,
+      /(if\s*\([\s\S]*?\)\s*{[\s\S]*?})/g,
+      /(for\s*\([\s\S]*?\)\s*{[\s\S]*?})/g,
+      /(while\s*\([\s\S]*?\)\s*{[\s\S]*?})/g,
+      /(try\s*{[\s\S]*?}\s*catch[\s\S]*?})/g,
+      /(\.\w+\([\s\S]*?\))/g,
+      /(\w+\.\w+\([\s\S]*?\))/g,
+    ];
+    
+    let text = blocks[0];
+    let newBlocks: string[] = [];
+    let lastIndex = 0;
+    
+    // Find all code matches
+    const matches: Array<{start: number, end: number, text: string}> = [];
+    
+    codePatterns.forEach(pattern => {
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        matches.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          text: match[0]
+        });
+      }
+    });
+    
+    // Sort matches by start position
+    matches.sort((a, b) => a.start - b.start);
+    
+    // Merge overlapping matches
+    const mergedMatches: Array<{start: number, end: number, text: string}> = [];
+    for (const match of matches) {
+      if (mergedMatches.length === 0 || match.start > mergedMatches[mergedMatches.length - 1].end) {
+        mergedMatches.push(match);
+      } else {
+        // Extend the last match
+        mergedMatches[mergedMatches.length - 1].end = Math.max(
+          mergedMatches[mergedMatches.length - 1].end,
+          match.end
+        );
+        mergedMatches[mergedMatches.length - 1].text = text.substring(
+          mergedMatches[mergedMatches.length - 1].start,
+          mergedMatches[mergedMatches.length - 1].end
+        );
+      }
+    }
+    
+    // Build blocks from text and code
+    for (const match of mergedMatches) {
+      // Add text before code
+      if (match.start > lastIndex) {
+        const textBlock = text.substring(lastIndex, match.start).trim();
+        if (textBlock) {
+          newBlocks.push(textBlock);
+        }
+      }
+      
+      // Add code block
+      newBlocks.push(`\`\`\`\n${match.text}\n\`\`\``);
+      lastIndex = match.end;
+    }
+    
+    // Add remaining text
+    if (lastIndex < text.length) {
+      const remainingText = text.substring(lastIndex).trim();
+      if (remainingText) {
+        newBlocks.push(remainingText);
+      }
+    }
+    
+    blocks = newBlocks;
+  }
+  
+  return (
+    <div className="space-y-4">
+      {blocks.map((block, index) => {
+        if (block.startsWith('```') && block.endsWith('```')) {
+          // This is a code block
+          const codeContent = block.slice(3, -3);
+          const lines = codeContent.split('\n');
+          const language = lines[0].trim() || 'text';
+          const actualCode = lines.slice(1).join('\n');
+          
+          return (
+            <div key={index} className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <div className="text-xs text-gray-500 mb-2 font-mono bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded inline-block">
+                {language}
+              </div>
+              <pre className="text-sm overflow-x-auto">
+                <code className="font-mono text-gray-800 dark:text-gray-200">{actualCode}</code>
+              </pre>
+            </div>
+          );
+        } else {
+          // This is text content
+          return (
+            <div key={index} className="text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
+              {block}
+            </div>
+          );
+        }
+      })}
+    </div>
+  );
+};
 
 export default function AskQA() {
   const [question, setQuestion] = useState('');
   const [code, setCode] = useState('');
-  const [response, setResponse] = useState('');
+  const [response, setResponse] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamUrl, setStreamUrl] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setIsStreaming(true);
     setResponse('');
 
     try {
@@ -32,44 +150,17 @@ export default function AskQA() {
         throw new Error('Network response was not ok');
       }
 
-      // Set up streaming
-      const reader = res.body?.getReader();
-      if (!reader) {
-        throw new Error('No reader available');
-      }
-
-      let fullText = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = new TextDecoder().decode(value);
-        console.log('Received chunk:', chunk); // Debug log
-        const lines = chunk.split('\n');
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            console.log('Processing data line:', data); // Debug log
-            // Handle error messages
-            if (data.startsWith('[ERROR]')) {
-              console.error('Streaming error:', data);
-              setResponse('An error occurred during streaming.');
-              break;
-            }
-            // Add the text content directly
-            fullText += data;
-            console.log('Updated fullText:', fullText); // Debug log
-            setResponse(fullText);
-          }
-        }
-      }
-
-      setIsStreaming(false);
+      // Debug: Check what we're actually getting
+      const contentType = res.headers.get('content-type');
+      console.log('Content-Type:', contentType);
+      
+      const data = await res.json();
+      const raw = data.response || data.message || '';
+      const cleaned = raw.replace(/```/g, "'''");  // retain newline structure
+      setResponse(cleaned);
     } catch (error) {
       console.error('Error:', error);
       setResponse('An error occurred while processing your request.');
-      setIsStreaming(false);
     } finally {
       setIsLoading(false);
     }
@@ -122,16 +213,9 @@ export default function AskQA() {
       {response && (
         <div className="mt-8 p-4 border rounded-md dark:border-gray-700">
           <h2 className="text-xl font-semibold mb-4">Response</h2>
-          <div className="prose prose-sm max-w-none dark:prose-invert">
-            <ReactMarkdown>{response}</ReactMarkdown>
-          </div>
-          {isStreaming && (
-            <div className="mt-2 text-sm text-gray-500">
-              <span className="animate-pulse">●</span> Streaming...
-            </div>
-          )}
+          <TextCodeRenderer content={response} />
         </div>
       )}
     </div>
   );
-} 
+}

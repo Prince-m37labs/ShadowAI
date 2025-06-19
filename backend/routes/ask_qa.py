@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Request
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import httpx
 import os
@@ -61,9 +60,7 @@ async def ask_qa(input: AskQAInput):
         if similar_response:
             print("[DEBUG] Found similar question in history, returning cached response")
             return {
-                "analysis": similar_response,
-                "simple": similar_response,
-                "streamlined": similar_response.split("Streamlined Version:")[-1].strip() if "Streamlined Version:" in similar_response else ""
+                "response": similar_response
             }
 
     api_key = os.getenv("ANTHROPIC_API_KEY")
@@ -86,81 +83,51 @@ async def ask_qa(input: AskQAInput):
         ],
         "max_tokens": 2048,
         "temperature": 0.5,
-        "stream": True
+        "stream": False  # Disable streaming
     }
 
     start = perf_counter()
     
-    async def stream_response():
-        print("[DEBUG] Starting stream_response function")
+    try:
+        print("[DEBUG] Making request to Claude API")
         async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-            try:
-                print("[DEBUG] Making request to Claude API")
-                async with client.stream(
-                    "POST",
-                    "https://api.anthropic.com/v1/messages",
-                    headers=headers,
-                    json=body,
-                    timeout=TIMEOUT
-                ) as response:
-                    response.raise_for_status()
-                    print("[DEBUG] Claude API response received, starting to read lines")
-                    full_response = ""
-                    
-                    # Handle Claude's streaming response format
-                    async for line in response.aiter_lines():
-                        print(f"[DEBUG] Received line: {line[:100]}...")  # Log first 100 chars
-                        if line.startswith('data: '):
-                            data = line[6:]  # Remove 'data: ' prefix
-                            if data.strip() == '[DONE]':
-                                print("[DEBUG] Received [DONE] signal")
-                                break
-                            
-                            try:
-                                # Parse the JSON chunk from Claude
-                                import json
-                                chunk_data = json.loads(data)
-                                print(f"[DEBUG] Parsed JSON chunk: {chunk_data}")
-                                
-                                # Handle different types of streaming events
-                                if chunk_data.get('type') == 'content_block_delta':
-                                    delta = chunk_data.get('delta', {})
-                                    if delta.get('type') == 'text_delta':
-                                        text = delta.get('text', '')
-                                        full_response += text
-                                        print(f"[DEBUG] Yielding text delta: {text[:50]}...")
-                                        yield f"data: {text}\n\n"
-                                elif 'content' in chunk_data and chunk_data['content']:
-                                    # Fallback for older format
-                                    for content_block in chunk_data['content']:
-                                        if content_block.get('type') == 'text':
-                                            text = content_block.get('text', '')
-                                            full_response += text
-                                            print(f"[DEBUG] Yielding text: {text[:50]}...")
-                                            yield f"data: {text}\n\n"
-                            except json.JSONDecodeError as e:
-                                print(f"[DEBUG] JSON decode error: {e}")
-                                # If it's not JSON, treat as plain text
-                                if data.strip():
-                                    full_response += data
-                                    print(f"[DEBUG] Yielding plain text: {data[:50]}...")
-                                    yield f"data: {data}\n\n"
-                    
-                    print(f"[DEBUG] Stream completed, full response length: {len(full_response)}")
-                    # Save to history after stream completes
-                    save_to_history(
-                        feature="ask-qa",
-                        user_input=body["messages"][0]["content"],
-                        claude_prompt=body["messages"][0]["content"],
-                        claude_response=full_response,
-                        response_time_ms=(perf_counter() - start) * 1000,
-                        metadata={"model": CLAUDE_MODEL}
-                    )
-            except Exception as e:
-                print(f"[DEBUG] Exception in stream_response: {e}")
-                yield f"data: [ERROR] {str(e)}\n\n"
-
-    return StreamingResponse(
-        stream_response(),
-        media_type="text/event-stream"
-    )
+            response = await client.post(
+                "https://api.anthropic.com/v1/messages",
+                headers=headers,
+                json=body,
+                timeout=TIMEOUT
+            )
+            response.raise_for_status()
+            
+            data = response.json()
+            print(f"[DEBUG] Claude API response received")
+            
+            # Extract the text content from Claude's response
+            full_response = ""
+            for block in data.get("content", []):
+                if block.get("type") == "text":
+                    text = block.get("text", "")
+                    full_response += text
+            
+            if not full_response:
+                full_response = "No response received from Claude"
+            
+            print(f"[DEBUG] Response length: {len(full_response)}")
+            
+            # Save to history
+            save_to_history(
+                feature="ask-qa",
+                user_input=body["messages"][0]["content"],
+                claude_prompt=body["messages"][0]["content"],
+                claude_response=full_response,
+                response_time_ms=(perf_counter() - start) * 1000,
+                metadata={"model": CLAUDE_MODEL}
+            )
+            
+            return {
+                "response": full_response
+            }
+            
+    except Exception as e:
+        print(f"[DEBUG] Exception in ask_qa: {e}")
+        return {"error": str(e)}

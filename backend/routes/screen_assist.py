@@ -1,9 +1,13 @@
+# NOTE for frontend: capture 5 screenshots over 10 seconds (every 2s) to ensure coverage.
+# Pass these in image_base64_list to this route.
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 import base64
 import numpy as np
 import cv2
 from paddleocr import PaddleOCR
+import pytesseract
+import easyocr
 import httpx
 import os
 import datetime
@@ -11,6 +15,7 @@ from time import perf_counter
 from typing import Dict, List, Optional
 import asyncio
 import re
+from difflib import get_close_matches
 
 router = APIRouter()
 
@@ -36,8 +41,11 @@ ocr = PaddleOCR(
     det_db_box_thresh=0.3,  # Higher threshold for faster processing
     use_dilation=False,  # Disable dilation for speed
     rec_algorithm='CRNN',
-    rec_image_shape='3, 32, 320'  # Smaller image shape for faster processing
+    rec_image_shape='3, 32, 480'  # Wider shape for better small-font capture
 )
+
+# Initialize EasyOCR reader once
+easyocr_reader = easyocr.Reader(['en'], gpu=False)
 
 CLAUDE_MODEL = "claude-sonnet-4-20250514"
 MAX_RETRIES = 3
@@ -50,19 +58,36 @@ SYSTEM_PROMPT = (
 )
 
 def preprocess_image(img):
-    # Resize moderately to balance speed and accuracy
-    img = cv2.resize(img, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_LINEAR)
+    # Do not resize image — preserve original dimensions
+    # img = cv2.resize(img, None, fx=3.0, fy=3.0, interpolation=cv2.INTER_LINEAR)
 
     # Convert to grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Apply simple contrast enhancement
-    clahe = cv2.createCLAHE(clipLimit=1.5, tileGridSize=(4, 4))
-    enhanced = clahe.apply(gray)
+    # Apply CLAHE for local contrast enhancement (helps low-contrast themes)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    gray = clahe.apply(gray)
 
-    # Apply simple thresholding
-    _, thresh = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return thresh
+    # Denoise with bilateral filter (preserve edges)
+    gray = cv2.bilateralFilter(gray, 9, 75, 75)
+
+    # Adaptive threshold to handle varying font weights and themes
+    thresh = cv2.adaptiveThreshold(
+        gray, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY_INV,
+        blockSize=17,
+        C=3
+    )
+
+    # Morphological operations to clarify character edges
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+    morph = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+
+    # Invert back to original form if needed
+    morph = cv2.bitwise_not(morph)
+
+    return morph
 
 def create_prompt(user_query, extracted_code):
     return (
@@ -80,22 +105,8 @@ def create_prompt(user_query, extracted_code):
         "Keep the total response under 500 words and focus on the most important information."
     )
 
-async def run_ocr_with_timeout(image, timeout=OCR_TIMEOUT):
-    """Run OCR with timeout to prevent hanging"""
-    try:
-        # Run OCR in executor to allow timeout
-        loop = asyncio.get_running_loop()
-        result = await asyncio.wait_for(
-            loop.run_in_executor(None, ocr.ocr, image, False),  # cls=False for speed
-            timeout=timeout
-        )
-        return result
-    except asyncio.TimeoutError:
-        print(f"OCR timeout after {timeout} seconds")
-        return None
-    except Exception as e:
-        print(f"OCR error: {str(e)}")
-        return None
+#
+# Removed run_ocr_with_timeout: replaced with pytesseract/easyocr fallback logic
 
 def extract_simple_text_from_image(image):
     """Simple text extraction fallback when OCR fails"""
@@ -125,6 +136,47 @@ def extract_simple_text_from_image(image):
     except Exception as e:
         print(f"Simple text extraction error: {str(e)}")
         return "Image processing failed"
+
+# Common programming keywords for fuzzy matching
+KEYWORDS = {
+    "python": [
+        "def", "return", "print", "for", "while", "if", "elif", "else", "import",
+        "from", "class", "try", "except", "finally", "with", "as", "raise", "assert",
+        "yield", "lambda", "global", "nonlocal", "pass", "break", "continue", "in", "is"
+    ]
+}
+
+# Known OCR error fixes (exact replacements)
+OCR_FIXES = {
+    "prinf": "printf",
+    "retunr": "return",
+    "Retrun": "Return",
+    "fucntion": "function",
+    "funtcion": "function",
+    "flase": "false",
+    "Flase": "False",
+    "ture": "true",
+    "Ture": "True"
+}
+
+def clean_ocr_text(text: str, lang="python") -> str:
+    lines = text.splitlines()
+    cleaned_lines = []
+
+    for line in lines:
+        words = re.findall(r'\w+|\W+', line)
+        cleaned_line = ""
+        for word in words:
+            stripped = word.strip()
+            if stripped in OCR_FIXES:
+                cleaned_line += OCR_FIXES[stripped]
+            elif stripped.isalpha() and lang in KEYWORDS:
+                close = get_close_matches(stripped, KEYWORDS[lang], n=1, cutoff=0.85)
+                cleaned_line += close[0] if close else word
+            else:
+                cleaned_line += word
+        cleaned_lines.append(cleaned_line)
+    return "\n".join(cleaned_lines)
 
 async def make_claude_request(client, headers, body, retry_count=0):
     try:
@@ -173,31 +225,28 @@ async def screen_assist(input: ScreenAssistSessionInput, request: Request):
             # Preprocess image
             processed_img = preprocess_image(img)
 
-            # Run OCR on preprocessed image only (faster)
+            # Use pytesseract first, fallback to easyocr, then fallback to simple extraction
             print(f"[DEBUG] Running OCR on image {idx + 1}")
-            result = await run_ocr_with_timeout(processed_img)
-            
-            if result is None:
-                print(f"[DEBUG] OCR failed for image {idx + 1}, trying fallback")
-                # Try fallback method
-                fallback_text = extract_simple_text_from_image(img)
-                if fallback_text:
-                    ocr_texts.append(fallback_text)
-                continue
+            ocr_text = ""
+            try:
+                ocr_text = pytesseract.image_to_string(processed_img)
+                if not ocr_text.strip():
+                    raise ValueError("Tesseract returned empty text")
+                print(f"[DEBUG] Tesseract OCR result for image {idx + 1}:\n{ocr_text}")
+            except Exception as tesseract_error:
+                print(f"[DEBUG] Tesseract failed: {tesseract_error}")
+                try:
+                    result = easyocr_reader.readtext(processed_img)
+                    ocr_text = "\n".join([line[1] for line in result if line[1].strip()])
+                    print(f"[DEBUG] EasyOCR fallback result for image {idx + 1}:\n{ocr_text}")
+                except Exception as easyocr_error:
+                    print(f"[DEBUG] EasyOCR failed: {easyocr_error}")
+                    ocr_text = extract_simple_text_from_image(img)
+                    ocr_text = f"[OCR failed, fallback]: {ocr_text}"
 
-            # Extract text from results
-            ocr_results = []
-            if result and len(result) > 0:
-                for line in result[0]:
-                    if line and len(line) >= 2:
-                        text = line[1][0].strip()
-                        if text and len(text) > 2:  # Filter out very short text
-                            ocr_results.append(text)
-
-            ocr_text = '\n'.join(ocr_results)
             if ocr_text.strip():
-                ocr_texts.append(ocr_text)
-                print(f"[DEBUG] Extracted {len(ocr_results)} text lines from image {idx + 1}")
+                ocr_texts.append(ocr_text.strip())
+                print(f"[DEBUG] Extracted text from image {idx + 1}")
             else:
                 print(f"[DEBUG] No text extracted from image {idx + 1}")
 
@@ -206,10 +255,19 @@ async def screen_assist(input: ScreenAssistSessionInput, request: Request):
             continue
             
     full_ocr = '\n'.join(ocr_texts)
+    full_ocr = clean_ocr_text(full_ocr, lang="python")
+    print(f"[DEBUG] Cleaned OCR Text:\n{full_ocr}")
     print(f"[DEBUG] Total extracted text length: {len(full_ocr)}")
     
     if not full_ocr.strip():
-        return {"error": "⚠️ We couldn't detect code on your screen. Please ensure your code editor is visible and try again."}
+        fallback_message = (
+            "⚠️ We couldn't detect readable code from your screen capture. "
+            "This may happen if:\n"
+            "- Your code font is very small\n"
+            "- Your editor theme is dark with low contrast\n\n"
+            "🛠 Try increasing font size, using a light theme, or zooming in before running Screen Assist again."
+        )
+        return {"error": fallback_message}
         
     prompt = create_prompt(input.query, full_ocr)
     api_key = os.getenv("ANTHROPIC_API_KEY")
