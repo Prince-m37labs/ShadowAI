@@ -24,3 +24,97 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* === Used in dashboard/devqa (DevQAChatPage), dashboard/gitops (GitOpsPage), dashboard/refactor (RefactorPage), and dashboard/screen-assist (ScreenAssistPage) === */
+@keyframes fade-in {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: none; }
+}
+.animate-fade-in { animation: fade-in 0.7s cubic-bezier(.4,0,.2,1) both; }
+
+/* === Used in dashboard/devqa (DevQAChatPage), dashboard/gitops (GitOpsPage), dashboard/refactor (RefactorPage), and dashboard/screen-assist (ScreenAssistPage) === */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+.animate-wiggle { animation: wiggle 0.7s infinite; display: inline-block; }
+
+/* === Used in dashboard/gitops (GitOpsPage) === */
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.animate-bounce-slow { animation: bounce-slow 2.2s infinite; display: inline-block; }
+
+/* === Used in dashboard/gitops (GitOpsPage) === */
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.animate-spin-slow { animation: spin-slow 6s linear infinite; display: inline-block; }
+
+/* === Used in dashboard/devqa (DevQAChatPage), dashboard/gitops (GitOpsPage), dashboard/refactor (RefactorPage), and dashboard/screen-assist (ScreenAssistPage) === */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+.animate-shake { animation: shake 0.5s; }
+
+/* === Used in app/page.tsx (Home) === */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-bounce { animation: bounce 1.2s infinite; display: inline-block; }
+
+/* === Used in app/page.tsx (Home) === */
+@keyframes pop {
+  0% { transform: scale(0.95); }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+.animate-pop:active { animation: pop 0.2s; }
+
+/* === Used in app/page.tsx (Home) === */
+@keyframes gradient {
+  0% { color: #f4acb7; }
+  50% { color: #a7c7e7; }
+  100% { color: #f4acb7; }
+}
+.animate-gradient { animation: gradient 3s ease-in-out infinite; }
+
+/* === Used in app/page.tsx (Home) === */
+@keyframes move-on-hover {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(12px); }
+}
+.hover\:animate-move-on-hover:hover, .group:hover .group-hover\:animate-bounce {
+  animation: move-on-hover 0.4s cubic-bezier(.4,0,.2,1) both, bounce 1.2s infinite;
+}
+
+/* === Used in app/page.tsx (Home) === */
+#typewriter-feature {
+  border-right: 2px solid #232946;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  min-width: 10ch;
+  background: transparent;
+}
+
+/* === Used in app/page.tsx (Home) === */
+#typewriter-multiline span {
+  display: block;
+  font-size: 0.85rem;
+  font-family: 'Fira Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
+  font-weight: 600;
+  color: #fff;
+  background: transparent;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  border-right: 2px solid #f4acb7;
+  min-width: 10ch;
+}
+#typewriter-multiline span.filled {
+  border-right: none;
+}

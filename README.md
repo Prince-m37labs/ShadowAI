@@ -84,10 +84,18 @@ A comprehensive AI-powered development assistant that combines a modern Next.js 
    ```
 
 5. **Set up environment variables**:
-   Create a `.env` file in the backend directory:
+   Create a `.env` file in the `backend` directory with the following variables. This file should **not** be committed to version control.
+
    ```env
-   ANTHROPIC_API_KEY=your_claude_api_key_here
+   # Your Anthropic/Claude API key
+   ANTHROPIC_API_KEY=your_claode_api_key_here
+
+   # Your MongoDB connection string
    MONGODB_URI=your_mongodb_connection_string
+
+   # Comma-separated list of allowed frontend origins for CORS
+   # For local development, this should be your Next.js dev server
+   CORS_ORIGINS=http://localhost:3000
    ```
 
 6. **Run the backend server**:
@@ -109,15 +117,41 @@ A comprehensive AI-powered development assistant that combines a modern Next.js 
    yarn install
    ```
 
-3. **Run the development server**:
+3. **Set up environment variables**:
+   Create a `.env.local` file in the `frontend` directory. This file should **not** be committed to version control.
+
+   ```env
+   # Base URL for the backend API
+   # For local development, this points to your local FastAPI server
+   NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+   ```
+
+4. **Run the development server**:
    ```bash
    npm run dev
    # or
    yarn dev
    ```
 
-4. **Open your browser**:
+5. **Open your browser**:
    Navigate to [http://localhost:3000](http://localhost:3000)
+
+## 🔥 Quick Start with `start.sh`
+
+To start both the backend (FastAPI) and frontend (Next.js) servers at once, use the provided `start.sh` script:
+
+```bash
+./start.sh
+```
+
+- This script will:
+  - Activate the Python virtual environment and start the FastAPI backend on port 8000
+  - Start the Next.js frontend on port 3000
+  - Automatically stop both servers when you press Ctrl+C
+
+> **Note:**
+> - Make sure you have run all installation steps for both backend and frontend before using this script.
+> - On macOS/Linux, you may need to make the script executable: `chmod +x start.sh`
 
 ## 🏗 Project Structure
 
@@ -228,15 +262,26 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 
 ## 🔒 Environment Variables
 
-### Backend (.env)
+### Backend (`backend/.env`)
+Create a `.env` file in the `backend` directory.
+
 ```env
+# Your Anthropic/Claude API key
 ANTHROPIC_API_KEY=your_claude_api_key_here
-MONGODB_URI=mongodb://localhost:27017/ai_assistant
+
+# Your MongoDB connection string
+MONGODB_URI=your_mongodb_connection_string
+
+# For local development, allow requests from the Next.js dev server
+CORS_ORIGINS=http://localhost:3000
 ```
 
-### Frontend (.env.local)
+### Frontend (`frontend/.env.local`)
+Create a `.env.local` file in the `frontend` directory.
+
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000
+# For local development, point to the local FastAPI server
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
 
 ## 📝 Usage
@@ -286,4 +331,33 @@ If you encounter any issues or have questions:
 - [ ] Real-time collaboration features
 - [ ] Mobile app development
 - [ ] Plugin system for extensibility
-- [ ] Code snippet extraction and sharing 
+- [ ] Code snippet extraction and sharing
+
+## ☁️ Deployment
+
+This project is designed to be deployed with a Vercel frontend and a Render backend.
+
+### 1. Backend (FastAPI on Render)
+
+1.  **Push to GitHub**: Ensure your latest backend code is on GitHub.
+2.  **Create a Web Service on Render**:
+    *   Connect your GitHub repository.
+    *   Set the **Root Directory** to `backend`.
+    *   **Build Command**: `pip install -r requirements.txt`
+    *   **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+3.  **Add Environment Variables on Render**:
+    *   `ANTHROPIC_API_KEY`: Your Claude API key.
+    *   `MONGODB_URI`: Your MongoDB connection string.
+    *   `PYTHON_VERSION`: A specific Python version (e.g., `3.11.0`).
+    *   `CORS_ORIGINS`: Your Vercel frontend URL (e.g., `https://your-frontend.vercel.app`).
+
+### 2. Frontend (Next.js on Vercel)
+
+1.  **Push to GitHub**: Ensure your latest frontend code is on GitHub.
+2.  **Create a Project on Vercel**:
+    *   Connect your GitHub repository.
+    *   The build settings are typically detected automatically.
+3.  **Add Environment Variable on Vercel**:
+    *   `NEXT_PUBLIC_API_BASE_URL`: Your deployed Render backend URL (e.g., `https://your-backend.onrender.com`).
+
+Once both are deployed, the frontend on Vercel will make API calls to your backend on Render.

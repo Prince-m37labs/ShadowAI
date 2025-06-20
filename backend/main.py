@@ -24,10 +24,14 @@ print("📦 Claude API Key:", os.getenv("ANTHROPIC_API_KEY"))
 print("🛠 Mongo URI:", os.getenv("MONGODB_URI"))
 app = FastAPI()
 
+# Define allowed origins for CORS using environment variable
+# Set CORS_ORIGINS to a comma-separated list of allowed origins in your environment
+origins = [origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")]
+
 # Allow frontend to access backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # or ["*"] during dev
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,21 +1,14 @@
 'use client';
 
-import Image from "next/image";
 import Link from 'next/link';
 import { useEffect } from 'react';
+import { HOME_FEATURES } from '../constant/homeConstants';
 
 export default function Home() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const features = [
-      '🗣 Code Refactoring: Paste spaghetti, get gourmet. ShadowAI: the Gordon Ramsay of code.',
-      '🗣 Dev QA: Ask anything—except for my secret sauce. ShadowAI answers, no eye rolls (promise).',
-      '🗣 Screen-Aware Assistant: Upload your messy desktop. ShadowAI sees all, judges none (well, maybe a little).',
-      '🗣 GitOps Automation: Repo chaos? ShadowAI brings order faster than you can say \'git push\'.',
-      '🗣 Prompt Explorer: Tinker, break, repeat. ShadowAI is your AI prompt playground supervisor.',
-      '🗣 Security Check: ShadowAI: Because your code deserves a bodyguard with laser eyes.',
-      '🗣 Stack Familiarizer: ShadowAI reads docs so you can keep pretending you did.'
-    ];
+    // Use imported HOME_FEATURES for the typewriter animation
+    const features = HOME_FEATURES;
     let idx = 0;
     let char = 0;
     let currentLine = 0;
@@ -71,12 +64,12 @@ export default function Home() {
           Your all in one AI-powered developer assistant for code refactoring, documentation, security, GitOps, and more.
         </p>
         <div className="flex flex-wrap gap-6 justify-center mt-4 animate-fade-in">
-          <Link href="/dashboard/refactor">
+          <Link href="/refactor">
             <div className="group bg-gradient-to-br from-[#f4acb7] to-[#a7c7e7] text-[#232946] px-6 py-4 rounded-xl shadow-lg font-bold text-lg flex items-center gap-2 transition cursor-pointer hover:animate-move-on-hover">
               <span className="text-2xl group-hover:animate-bounce">🛠️</span> Refactor
             </div>
           </Link>
-          <Link href="/dashboard/devqa">
+          <Link href="/devqa">
             <div className="group bg-gradient-to-br from-[#a7e7c7] to-[#f4acb7] text-[#232946] px-6 py-4 rounded-xl shadow-lg font-bold text-lg flex items-center gap-2 transition cursor-pointer hover:animate-move-on-hover">
               <span className="text-2xl group-hover:animate-bounce">💬</span> Ask Anything
             </div>
@@ -101,75 +94,6 @@ export default function Home() {
           </span>
         </div>
       </div>
-      <style jsx global>{`
-        @keyframes fade-in {
-          0% { opacity: 0; transform: translateY(16px); }
-          100% { opacity: 1; transform: none; }
-        }
-        .animate-fade-in { animation: fade-in 0.7s cubic-bezier(.4,0,.2,1) both; }
-        @keyframes wiggle {
-          0%, 100% { transform: rotate(-3deg); }
-          50% { transform: rotate(3deg); }
-        }
-        .animate-wiggle { animation: wiggle 0.7s infinite; display: inline-block; }
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-8px); }
-        }
-        .animate-bounce { animation: bounce 1.2s infinite; display: inline-block; }
-        @keyframes bounce-slow {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-12px); }
-        }
-        .animate-bounce-slow { animation: bounce-slow 2.2s infinite; display: inline-block; }
-        @keyframes pop {
-          0% { transform: scale(0.95); }
-          60% { transform: scale(1.05); }
-          100% { transform: scale(1); }
-        }
-        .animate-pop:active { animation: pop 0.2s; }
-        @keyframes spin-slow {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-        .animate-spin-slow { animation: spin-slow 6s linear infinite; display: inline-block; }
-        @keyframes gradient {
-          0% { color: #f4acb7; }
-          50% { color: #a7c7e7; }
-          100% { color: #f4acb7; }
-        }
-        .animate-gradient { animation: gradient 3s ease-in-out infinite; }
-        @keyframes move-on-hover {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(12px); }
-        }
-        .hover\:animate-move-on-hover:hover, .group:hover .group-hover\:animate-bounce {
-          animation: move-on-hover 0.4s cubic-bezier(.4,0,.2,1) both, bounce 1.2s infinite;
-        }
-        /* True typewriter animation handled by JS for one-at-a-time effect */
-        #typewriter-feature {
-          border-right: 2px solid #232946;
-          white-space: nowrap;
-          letter-spacing: 0.02em;
-          min-width: 10ch;
-          background: transparent;
-        }
-        #typewriter-multiline span {
-          display: block;
-          font-size: 0.85rem;
-          font-family: 'Fira Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
-          font-weight: 600;
-          color: #fff; /* changed to white */
-          background: transparent;
-          letter-spacing: 0.02em;
-          white-space: nowrap;
-          border-right: 2px solid #f4acb7;
-          min-width: 10ch;
-        }
-        #typewriter-multiline span.filled {
-          border-right: none;
-        }
-      `}</style>
       <footer className="w-full flex justify-center items-center py-6 mt-10 text-xs text-[#232946] font-mono select-none z-10">
         <span>&copy; {new Date().getFullYear()} M37 labs. All rights reserved. | ShadowAI is a developer assistant project by Master Prince. For more info, contact: prince@m37labs.com</span>
       </footer>
