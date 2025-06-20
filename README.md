@@ -118,12 +118,11 @@ A comprehensive AI-powered development assistant that combines a modern Next.js 
    ```
 
 3. **Set up environment variables**:
-   Create a `.env.local` file in the `frontend` directory. This file should **not** be committed to version control.
+   Create a `.env.local` file in the `frontend` directory. This file should **not** be committed to version control. The Next.js server uses this to connect to the backend.
 
    ```env
-   # Base URL for the backend API
-   # For local development, this points to your local FastAPI server
-   NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+   # URL for the FastAPI backend server
+   BACKEND_URL=http://localhost:8000
    ```
 
 4. **Run the development server**:
@@ -135,6 +134,13 @@ A comprehensive AI-powered development assistant that combines a modern Next.js 
 
 5. **Open your browser**:
    Navigate to [http://localhost:3000](http://localhost:3000)
+
+6. **Add environment variables**:
+   - `BACKEND_URL`: The URL of your deployed backend on Render
+
+5. **Deploy the project**
+
+Once both are deployed, the frontend on Vercel will make API calls to your backend on Render.
 
 ## 🔥 Quick Start with `start.sh`
 
@@ -171,16 +177,17 @@ To start both the backend (FastAPI) and frontend (Next.js) servers at once, use 
 ├── frontend/
 │   ├── src/
 │   │   ├── app/             # Next.js app directory
-│   │   │   ├── dashboard/   # Dashboard pages
+│   │   │   ├── (dashboard)/   # Dashboard pages (Route Group)
 │   │   │   │   ├── ask-qa/  # Q&A interface
 │   │   │   │   ├── refactor/ # Refactoring interface
 │   │   │   │   ├── gitops/  # Git operations interface
 │   │   │   │   └── screen-assist/ # Screen assistant interface
-│   │   │   ├── explorer/    # Code explorer page
+│   │   │   ├── api/         # API proxy routes
 │   │   │   ├── components/  # Shared components
 │   │   │   ├── layout.tsx   # Root layout
 │   │   │   ├── page.tsx     # Home page
 │   │   │   └── globals.css  # Global styles
+│   │   ├── constant/        # Constant variables
 │   ├── public/              # Static assets
 │   ├── package.json         # Node.js dependencies
 │   └── next.config.ts       # Next.js configuration
@@ -280,8 +287,8 @@ CORS_ORIGINS=http://localhost:3000
 Create a `.env.local` file in the `frontend` directory.
 
 ```env
-# For local development, point to the local FastAPI server
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+# URL for the FastAPI backend server
+BACKEND_URL=http://localhost:8000
 ```
 
 ## 📝 Usage
