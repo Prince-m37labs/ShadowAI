@@ -321,7 +321,7 @@ export default function ScreenAssistPage() {
     let timeout: NodeJS.Timeout;
     if (loading) {
       timeout = setTimeout(() => {
-        setError('⚠️ Taking longer than expected. Claude may be busy...');
+        setError(' Taking longer than expected. Claude may be busy...');
       }, 15000);
     }
     return () => clearTimeout(timeout);
@@ -454,15 +454,7 @@ export default function ScreenAssistPage() {
           )}
         </div>
       </div>
-      {/* Dashboard Modules Section */}
-      <div className="p-6">
-        <h1 className="text-2xl font-bold mb-4">Dashboard Modules</h1>
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-          {modules.map((mod, index) => (
-            <ModuleCard key={index} title={mod.title} description={mod.description} status={mod.status} />
-          ))}
-        </div>
-      </div>
+    
     </div>
   );
 }

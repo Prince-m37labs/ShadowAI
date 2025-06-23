@@ -6,7 +6,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { HTMLAttributes } from 'react';
 import HomeButton from '../components/HomeButton';
-import { DEVQA_ENDPOINT } from '../../api/devqa';
+// Remove the import of DEVQA_ENDPOINT and define it as a constant
+const DEVQA_ENDPOINT = '/api/ask-qa';
 
 interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
   inline?: boolean;
