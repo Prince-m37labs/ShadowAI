@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const BACKEND_URL = process.env.BACKEND_URL;
+import { getApiUrl } from '../../../lib/api-config';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const apiResponse = await fetch(`${BACKEND_URL}/ask-qa`, {
+    const apiUrl = getApiUrl('/ask-qa');
+    
+    const apiResponse = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

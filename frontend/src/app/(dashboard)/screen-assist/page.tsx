@@ -6,7 +6,6 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { HTMLAttributes } from 'react';
 import HomeButton from '../components/HomeButton';
-import ModuleCard from '../components/ModuleCard';
 
 interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
   inline?: boolean;
