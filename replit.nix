@@ -12,5 +12,7 @@
     pkgs.libpng
     pkgs.libjpeg
     pkgs.zlib
+    pkgs.ffmpeg
+    pkgs.libwebp
   ];
 } 

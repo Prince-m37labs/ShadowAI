@@ -13,3 +13,6 @@ scikit-image
 scipy
 matplotlib
 easyocr
+anthropic
+python-multipart
+gunicorn

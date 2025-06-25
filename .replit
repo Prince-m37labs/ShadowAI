@@ -1,12 +1,11 @@
 run = "bash run.sh"
-modules = ["nodejs-20", "python-3.12", "web", "bash"]
+entrypoint = "run.sh"
 
 [nix]
-channel = "stable-24_05"
+channel = "stable-23_11"
 
 [env]
-PYTHONPATH = "/home/runner/$REPL_SLUG/backend"
-BACKEND_URL = "https://$REPL_SLUG.$REPL_OWNER.repl.co"
+PYTHONPATH = "/home/runner/workspace/backend"
 
 [packager]
 language = "nodejs"
@@ -34,7 +33,7 @@ syntax = "css"
 
 [languages.html]
 pattern = "**/*.html"
-syntax = "html" 
+syntax = "html"
 
 [deployment]
 run = ["sh", "-c", "bash run.sh"]
