@@ -37,7 +37,6 @@ DEBUG_OCR_LOG = os.getenv("DEBUG_OCR_LOG", "false").lower() == "true"
 ocr = PaddleOCR(
     use_angle_cls=False,  # Disable angle classification for speed
     lang='en',
-    use_gpu=False,
     det_db_box_thresh=0.3,  # Higher threshold for faster processing
     use_dilation=False,  # Disable dilation for speed
     rec_algorithm='CRNN',
