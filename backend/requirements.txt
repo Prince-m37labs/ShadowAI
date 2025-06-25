@@ -4,8 +4,6 @@ pydantic
 httpx
 python-dotenv
 pymongo
-paddleocr
-paddlepaddle
 opencv-python
 numpy
 Pillow

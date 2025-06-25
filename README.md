@@ -40,7 +40,7 @@ A comprehensive AI-powered development assistant that combines a modern Next.js 
 - **Language**: Python
 - **Database**: MongoDB with PyMongo
 - **AI**: Claude API (Anthropic)
-- **Computer Vision**: OpenCV, PaddleOCR, Tesseract OCR
+- **Computer Vision**: OpenCV, Tesseract OCR, EasyOCR
 - **Image Processing**: Pillow, NumPy
 - **Server**: Uvicorn
 
@@ -218,7 +218,7 @@ The Screen Assistant is a sophisticated tool that provides:
 
 ### **Advanced OCR Processing**
 - **Tesseract OCR**: Primary text extraction
-- **PaddleOCR**: Alternative OCR engine
+- **EasyOCR**: Alternative OCR engine
 - **Image Preprocessing**: 
   - Adaptive thresholding for varying brightness
   - Morphological operations for text clarity
@@ -331,7 +331,7 @@ If you encounter any issues or have questions:
 
 ## 🔮 Roadmap
 
-- [ ] Enhanced OCR accuracy for different code themes
+- [ ] Enhanced OCR accuracy for different code themes using Tesseract and EasyOCR
 - [ ] Real-time screen analysis streaming
 - [ ] Integration with more AI models
 - [ ] Advanced Git workflow automation

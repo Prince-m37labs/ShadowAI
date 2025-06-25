@@ -5,7 +5,6 @@ from pydantic import BaseModel
 import base64
 import numpy as np
 import cv2
-from paddleocr import PaddleOCR
 import pytesseract
 import easyocr
 import httpx
@@ -16,6 +15,7 @@ from typing import Dict, List, Optional
 import asyncio
 import re
 from difflib import get_close_matches
+from anthropic import Anthropic
 
 router = APIRouter()
 
@@ -32,16 +32,6 @@ class ScreenAssistSessionInput(BaseModel):
 session_ocr_blobs: Dict[str, Dict] = {}
 
 DEBUG_OCR_LOG = os.getenv("DEBUG_OCR_LOG", "false").lower() == "true"
-
-# Initialize PaddleOCR with optimized settings for speed
-ocr = PaddleOCR(
-    use_angle_cls=False,  # Disable angle classification for speed
-    lang='en',
-    det_db_box_thresh=0.3,  # Higher threshold for faster processing
-    use_dilation=False,  # Disable dilation for speed
-    rec_algorithm='CRNN',
-    rec_image_shape='3, 32, 480'  # Wider shape for better small-font capture
-)
 
 # Initialize EasyOCR reader once
 easyocr_reader = easyocr.Reader(['en'], gpu=False)
