@@ -16,30 +16,8 @@ echo "📦 Installing Python dependencies..."
 cd backend
 pip install -r requirements.txt
 
-# Install Node.js dependencies
-echo "📦 Installing Node.js dependencies..."
-cd ../frontend
-npm install
-
-# Check Node.js and npm versions
-echo "📋 Node.js version: $(node --version)"
-echo "📋 npm version: $(npm --version)"
-
-# Build the Next.js frontend
-echo "🔨 Building Next.js frontend..."
-npm run build
-
-# Check if build was successful
-if [ $? -ne 0 ]; then
-    echo "❌ Frontend build failed!"
-    exit 1
-fi
-
-echo "✅ Frontend build completed successfully"
-
 # Start the FastAPI backend on port 8000
 echo "🐍 Starting FastAPI backend on port 8000..."
-cd ../backend
 python -m uvicorn main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
 BACKEND_PID=$!
 
@@ -56,15 +34,66 @@ fi
 
 echo "✅ Backend is running on port 8000"
 
-# Start the Next.js frontend on port 3000 with detailed logging
-echo "⚛️ Starting Next.js frontend on port 3000..."
+# Install Node.js dependencies
+echo "📦 Installing Node.js dependencies..."
 cd ../frontend
-echo "Current directory: $(pwd)"
-echo "Checking if .next directory exists:"
-ls -la .next/ 2>/dev/null || echo "No .next directory found!"
 
-PORT=3000 npm start > frontend.log 2>&1 &
-FRONTEND_PID=$!
+# Fix the postcss configuration
+echo "🔧 Fixing postcss configuration..."
+cat > postcss.config.mjs << 'EOL'
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+EOL
+
+# Create a basic tailwind config if it doesn't exist
+if [ ! -f "tailwind.config.js" ]; then
+    echo "🔧 Creating tailwind configuration..."
+    cat > tailwind.config.js << 'EOL'
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+    "./components/**/*.{js,ts,jsx,tsx,mdx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+EOL
+fi
+
+# Update package.json to fix dependencies
+echo "🔧 Updating package.json..."
+npm uninstall @tailwindcss/postcss
+npm install tailwindcss@latest postcss@latest autoprefixer@latest --save-dev
+
+# Check Node.js and npm versions
+echo "📋 Node.js version: $(node --version)"
+echo "📋 npm version: $(npm --version)"
+
+# Build the Next.js frontend
+echo "🔨 Building Next.js frontend..."
+npm run build
+
+# Check if build was successful
+if [ $? -ne 0 ]; then
+    echo "❌ Frontend build failed!"
+    echo "Trying development mode instead..."
+    npm run dev > frontend.log 2>&1 &
+    FRONTEND_PID=$!
+else
+    echo "✅ Frontend build completed successfully"
+    # Start the Next.js frontend on port 3000
+    echo "⚛️ Starting Next.js frontend on port 3000..."
+    PORT=3000 npm start > frontend.log 2>&1 &
+    FRONTEND_PID=$!
+fi
 
 # Wait a moment for frontend to start
 sleep 10
@@ -79,11 +108,7 @@ fi
 
 echo "✅ Frontend is running on port 3000"
 
-# Check what's listening on port 3000
-echo "🔍 Checking what's listening on port 3000:"
-netstat -tlnp 2>/dev/null | grep :3000 || echo "Nothing found on port 3000"
-
-echo "✅ Both servers are starting up..."
+echo "✅ Both servers are running..."
 echo "🌐 Frontend will be available at: https://$REPL_SLUG.$REPL_OWNER.repl.co"
 echo "🔧 Backend API will be available at: $BACKEND_URL"
 
