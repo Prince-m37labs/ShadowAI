@@ -56,6 +56,7 @@ if [ ! -f "tailwind.config.js" ]; then
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
+    "./src/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -66,6 +67,14 @@ module.exports = {
   plugins: [],
 }
 EOL
+fi
+
+# Fix the globals.css file
+if [ -f "src/app/globals.css" ]; then
+    echo "🔧 Fixing globals.css..."
+    sed -i '1s/^@import "tailwindcss";/@tailwind base;\n@tailwind components;\n@tailwind utilities;/' src/app/globals.css
+    # Remove the @theme inline block if it exists
+    sed -i '/@theme inline/,/}/d' src/app/globals.css
 fi
 
 # Update package.json to fix dependencies

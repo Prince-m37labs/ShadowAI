@@ -38,14 +38,42 @@ If you encounter any issues:
    ```
    cat frontend/frontend.log
    ```
-3. Common issues:
+3. Common Tailwind CSS issues:
 
-   - If the frontend fails to build, the script will automatically try to run it in development mode instead
-   - If Tailwind CSS issues persist, try manually installing it with:
+   - If you see errors about `@import "tailwindcss"` or `@theme inline`, the script should automatically fix them
+   - Manually fix the CSS by editing `frontend/src/app/globals.css` and replacing:
+     ```css
+     @import "tailwindcss";
      ```
-     cd frontend
-     npm install tailwindcss@latest postcss@latest autoprefixer@latest --save-dev
+     with:
+     ```css
+     @tailwind base;
+     @tailwind components;
+     @tailwind utilities;
      ```
+   - Also remove any `@theme inline` blocks if they exist
+
+4. If Tailwind CSS issues persist, try manually setting it up:
+   ```
+   cd frontend
+   npm install tailwindcss@latest postcss@latest autoprefixer@latest --save-dev
+   npx tailwindcss init -p
+   ```
+   Then edit the tailwind.config.js to include:
+   ```js
+   module.exports = {
+     content: [
+       "./src/**/*.{js,ts,jsx,tsx,mdx}",
+       "./app/**/*.{js,ts,jsx,tsx,mdx}",
+       "./pages/**/*.{js,ts,jsx,tsx,mdx}",
+       "./components/**/*.{js,ts,jsx,tsx,mdx}",
+     ],
+     theme: {
+       extend: {},
+     },
+     plugins: [],
+   }
+   ```
 
 ## Manual Restart
 
