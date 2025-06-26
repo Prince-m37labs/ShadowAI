@@ -1,11 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { HTMLAttributes } from 'react';
-import HomeButton from '@/app/(dashboard)/components/HomeButton';
+import HomeButton from '../components/HomeButton';
 
 interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
   inline?: boolean;
@@ -49,7 +48,7 @@ export default function GitOpsPage() {
     // Note: Do not reset errorMessage here, it's part of the input
     
     try {
-      const requestBody: any = {};
+      const requestBody: Record<string, unknown> = {};
       
       if (selectedScenario) {
         requestBody.scenario_type = selectedScenario;
@@ -284,10 +283,12 @@ export default function GitOpsPage() {
                     const match = /language-(\w+)/.exec(className || '');
                     return !inline && match ? (
                       <SyntaxHighlighter
-                        style={vscDarkPlus as any}
                         language={match[1]}
                         PreTag="div"
-                        {...props}
+                        customStyle={{
+                          backgroundColor: '#1e1e1e',
+                          color: '#d4d4d4'
+                        }}
                       >
                         {String(children).replace(/\n$/, '')}
                       </SyntaxHighlighter>

@@ -9,9 +9,6 @@ export default function Home() {
     if (typeof window === 'undefined') return;
     // Use imported HOME_FEATURES for the typewriter animation
     const features = HOME_FEATURES;
-    let idx = 0;
-    let char = 0;
-    let currentLine = 0;
     let timeoutId: ReturnType<typeof setTimeout>;
     const container = document.getElementById('typewriter-multiline');
     if (!container) return;
@@ -25,8 +22,8 @@ export default function Home() {
         lineSpan.setAttribute('data-line', String(lineIdx));
         container.appendChild(lineSpan);
       }
-      let text = features[lineIdx];
-      let typed = lineSpan.textContent || '';
+      const text = features[lineIdx];
+      const typed = lineSpan.textContent || '';
       if (typed.length < text.length) {
         lineSpan.textContent = text.slice(0, typed.length + 1);
         timeoutId = setTimeout(() => typeLine(lineIdx), 55); // slower typing

@@ -1,18 +1,14 @@
 // In: frontend/src/app/api/git-scenarios/route.ts
 // This route handler acts as a proxy to the real FastAPI backend.
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getApiUrl } from '../../../lib/api-config';
-
-// Get the real backend URL from a server-side environment variable
-// This is not exposed to the public.
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 
 /**
  * Handles GET requests to /api/git-scenarios
  * Fetches the available Git scenarios from the FastAPI backend.
  */
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const apiUrl = getApiUrl('/git-scenarios');
     

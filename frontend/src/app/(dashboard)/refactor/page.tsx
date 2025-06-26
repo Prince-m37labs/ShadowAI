@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { HTMLAttributes } from 'react';
 import HomeButton from '../components/HomeButton';
 import { MODES, LANGUAGES } from '../../../constant/refactorConstants';
@@ -245,10 +244,12 @@ export default function RefactorPage() {
 													const match = /language-(\w+)/.exec(className || '');
 													return !inline && match ? (
 														<SyntaxHighlighter
-															style={vscDarkPlus as any}
 															language={match[1]}
 															PreTag="div"
-															{...props}
+															customStyle={{
+																backgroundColor: '#1e1e1e',
+																color: '#d4d4d4'
+															}}
 														>
 															{String(children).replace(/\n$/, '')}
 														</SyntaxHighlighter>

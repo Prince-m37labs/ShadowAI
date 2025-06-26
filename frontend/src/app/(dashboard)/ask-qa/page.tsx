@@ -13,7 +13,7 @@ const TextCodeRenderer = ({ content }: { content: string }) => {
   if (blocks.length === 1 && !blocks[0].includes('```')) {
     // Use imported codePatterns to split text into code and text blocks
     const text = blocks[0];
-    let newBlocks: string[] = [];
+    const newBlocks: string[] = [];
     let lastIndex = 0;
     
     // Find all code matches

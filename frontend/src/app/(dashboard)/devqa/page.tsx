@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { HTMLAttributes } from 'react';
 import HomeButton from '../components/HomeButton';
 // Remove the import of DEVQA_ENDPOINT and define it as a constant
@@ -106,7 +105,7 @@ export default function DevQAChatPage() {
             {loading ? (
               <span className="flex items-center gap-2 animate-pulse">
                 <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="#f4acb7" strokeWidth="4" fill="none" /><path className="opacity-75" fill="#f4acb7" d="M4 12a8 8 0 018-8v8z" /></svg>
-                Thinking…
+                Thinking&hellip;
               </span>
             ) : (
               <>
@@ -130,7 +129,7 @@ export default function DevQAChatPage() {
         {answer && (
           <div className="mt-8 bg-gradient-to-br from-[#393e6e] to-[#232946] p-5 rounded-xl border border-[#393e6e] relative shadow-lg animate-fade-in">
             <h2 className="font-semibold mb-3 text-[#a7adc6] flex items-center gap-2">
-              <span className="animate-bounce">🤖</span> Claude's Answer
+              <span className="animate-bounce">🤖</span> Claude&apos;s Answer
             </h2>
             <button
               className={`absolute top-5 right-5 px-3 py-1 text-xs font-semibold rounded transition flex items-center gap-1 ${copied ? 'bg-[#a7e7c7] text-[#232946]' : 'bg-[#f4acb7] text-[#232946] hover:bg-[#a7c7e7]'}`}
@@ -154,10 +153,12 @@ export default function DevQAChatPage() {
                     const match = /language-(\w+)/.exec(className || '');
                     return !inline && match ? (
                       <SyntaxHighlighter
-                        style={vscDarkPlus as any}
                         language={match[1]}
                         PreTag="div"
-                        {...props}
+                        customStyle={{
+                          backgroundColor: '#1e1e1e',
+                          color: '#d4d4d4'
+                        }}
                       >
                         {String(children).replace(/\n$/, '')}
                       </SyntaxHighlighter>

@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { HTMLAttributes } from 'react';
 import HomeButton from '../components/HomeButton';
 
@@ -34,12 +33,11 @@ export default function ScreenAssistPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stopRef = useRef(false);
   const outputRef = useRef<HTMLDivElement>(null);
-  const [modules, setModules] = useState<any[]>([]);
 
   useEffect(() => {
     fetch('/modules')
       .then(res => res.json())
-      .then(data => setModules(data));
+      .then(data => console.log('Modules loaded:', data));
   }, []);
 
   // Start screen capture and automate scroll/frame sending
@@ -96,15 +94,20 @@ export default function ScreenAssistPage() {
           captureMultipleFrames();
         }
       }, 1000);
-    } catch (e: any) {
-      if (e && e.name === 'NotAllowedError') {
-        setError('Screen sharing was denied. Please allow screen sharing and try again.');
-      } else if (e && e.name === 'NotFoundError') {
-        setError('No screen or window was found to share. Please try again.');
-      } else if (e && e.name === 'InvalidStateError') {
-        setError('Screen sharing is not available in this browser mode (e.g., Incognito). Please use a normal window.');
+    } catch (e: unknown) {
+      if (e && typeof e === 'object' && 'name' in e) {
+        const error = e as { name: string; message?: string };
+        if (error.name === 'NotAllowedError') {
+          setError('Screen sharing was denied. Please allow screen sharing and try again.');
+        } else if (error.name === 'NotFoundError') {
+          setError('No screen or window was found to share. Please try again.');
+        } else if (error.name === 'InvalidStateError') {
+          setError('Screen sharing is not available in this browser mode (e.g., Incognito). Please use a normal window.');
+        } else {
+          setError(error.message || 'Screen capture failed.');
+        }
       } else {
-        setError(e.message || 'Screen capture failed.');
+        setError('Screen capture failed.');
       }
       setRecording(false);
     }
@@ -115,7 +118,7 @@ export default function ScreenAssistPage() {
     if (!videoRef.current || !canvasRef.current) return;
     setLoading(true);
     setFramesDone(false);
-    let frames: string[] = [];
+    const frames: string[] = [];
 
     console.log('[DEBUG] Starting frame capture');
 
@@ -196,13 +199,13 @@ export default function ScreenAssistPage() {
           if (outputRef.current) outputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 300);
       }
-    } catch (e: any) {
-      const isAbort = e.name === 'AbortError' || e.message?.includes('aborted');
+    } catch (e: unknown) {
+      const isAbort = e instanceof Error && (e.name === 'AbortError' || e.message?.includes('aborted'));
       const errorMessage = isAbort
         ? 'Request was aborted. Claude may be taking too long or network connection was lost.'
         : e instanceof Error
         ? e.message
-        : JSON.stringify(e);
+        : 'Unknown error occurred';
       console.error('[DEBUG] Network error:', errorMessage);
       setLoading(false);
       setError(errorMessage || 'Failed to analyze screen. Please try again.');
@@ -226,7 +229,9 @@ export default function ScreenAssistPage() {
     const base64 = canvas.toDataURL('image/png');
     
     // Stop screen sharing
-    video.srcObject && (video.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+    if (video.srcObject) {
+      (video.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+    }
     setRecording(false);
     
     try {
@@ -274,12 +279,6 @@ export default function ScreenAssistPage() {
     }
   };
 
-  const handleStop = () => {
-    stopRef.current = true;
-    setRecording(false);
-    setLoading(true);
-  };
-
   const handleCopy = () => {
     if (analysis) {
       navigator.clipboard.writeText(analysis);
@@ -311,8 +310,9 @@ export default function ScreenAssistPage() {
     return () => {
       stopRef.current = true;
       videoRef.current?.pause();
-      videoRef.current?.srcObject &&
+      if (videoRef.current?.srcObject) {
         (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+      }
     };
   }, []);
 
@@ -337,7 +337,7 @@ export default function ScreenAssistPage() {
               <span className="animate">🪟</span> Screen Assist
             </h1>
             <p className="text-[#a7adc6] mb-6 text-sm">Capture your screen, scroll automatically, and let ShadowAI analyze everything you see.</p>
-            <label className="block font-semibold mb-2 text-[#a7adc6]">Describe what you're stuck on <span className="text-[#f4acb7]">(required)</span></label>
+            <label className="block font-semibold mb-2 text-[#a7adc6]">Describe what you&apos;re stuck on <span className="text-[#f4acb7]">(required)</span></label>
             <textarea
               className="w-full border border-[#393e6e] rounded-lg p-3 bg-[#232946] text-[#f6f7fb] font-mono text-base transition min-h-[80px] focus:outline-none focus:ring-2 focus:ring-[#f4acb7] placeholder:text-[#f4acb7]/60 mb-2"
               rows={4}
@@ -431,10 +431,12 @@ export default function ScreenAssistPage() {
                       const match = /language-(\w+)/.exec(className || '');
                       return !inline && match ? (
                         <SyntaxHighlighter
-                          style={vscDarkPlus as any}
                           language={match[1]}
                           PreTag="div"
-                          {...props}
+                          customStyle={{
+                            backgroundColor: '#1e1e1e',
+                            color: '#d4d4d4'
+                          }}
                         >
                           {String(children).replace(/\n$/, '')}
                         </SyntaxHighlighter>

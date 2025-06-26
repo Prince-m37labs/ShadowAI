@@ -1,11 +1,14 @@
 run = "bash run.sh"
+modules = ["nodejs-20", "python-3.12", "web", "bash"]
+entrypoint = "run.sh"
 
 [nix]
 channel = "stable-24_05"
 
 [env]
+# PYTHONPATH = "/home/runner/workspace/backend"
 PYTHONPATH = "/home/runner/$REPL_SLUG/backend"
-BACKEND_URL = "https://$REPL_SLUG.$REPL_OWNER.repl.co:8000"
+BACKEND_URL = "https://$REPL_SLUG.$REPL_OWNER.repl.co"
 
 [packager]
 language = "nodejs"
@@ -39,5 +42,13 @@ syntax = "html"
 run = ["sh", "-c", "bash run.sh"]
 
 [[ports]]
-localPort = 3000
+localPort = 443
 externalPort = 3000
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+
+[[ports]]
+localPort = 8000
+externalPort = 8000

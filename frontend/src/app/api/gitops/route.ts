@@ -4,10 +4,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getApiUrl } from '../../../lib/api-config';
 
-// Get the real backend URL from a server-side environment variable
-// This is not exposed to the public.
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
-
 /**
  * Handles POST requests to /api/gitops
  * Forwards the request to the FastAPI backend to get a Git command.
