@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { HTMLAttributes } from 'react';
 import HomeButton from '../components/HomeButton';
 
@@ -33,12 +34,6 @@ export default function ScreenAssistPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stopRef = useRef(false);
   const outputRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    fetch('/modules')
-      .then(res => res.json())
-      .then(data => console.log('Modules loaded:', data));
-  }, []);
 
   // Start screen capture and automate scroll/frame sending
   const handleStartScreenAssist = () => {
@@ -307,11 +302,12 @@ export default function ScreenAssistPage() {
   };
 
   useEffect(() => {
+    const video = videoRef.current;
     return () => {
       stopRef.current = true;
-      videoRef.current?.pause();
-      if (videoRef.current?.srcObject) {
-        (videoRef.current.srcObject as MediaStream).getTracks().forEach(track => track.stop());
+      video?.pause();
+      if (video?.srcObject) {
+        (video.srcObject as MediaStream).getTracks().forEach(track => track.stop());
       }
     };
   }, []);
@@ -427,24 +423,50 @@ export default function ScreenAssistPage() {
               <div className="prose prose-invert max-w-none">
                 <ReactMarkdown
                   components={{
-                    code: ({ inline, className, children, ...props }: CodeComponentProps) => {
-                      const match = /language-(\w+)/.exec(className || '');
-                      return !inline && match ? (
+                    pre({ children }) {
+                      const codeElement = Array.isArray(children) ? children[0] : children;
+                      if (!codeElement || typeof codeElement === 'string') return null;
+                      const className = codeElement.props?.className || '';
+                      const match = /language-(\w+)/.exec(className);
+                      return (
                         <SyntaxHighlighter
-                          language={match[1]}
+                          language={match ? match[1] : undefined}
+                          style={tomorrow}
                           PreTag="div"
                           customStyle={{
-                            backgroundColor: '#1e1e1e',
-                            color: '#d4d4d4'
+                            fontFamily:
+                              "var(--font-geist-mono), 'Fira Mono', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace",
+                            borderRadius: '0.5rem',
+                            padding: '1rem',
+                            fontSize: '0.9rem',
+                            margin: 0
                           }}
                         >
-                          {String(children).replace(/\n$/, '')}
+                          {String(codeElement.props.children).replace(/\n$/, '')}
                         </SyntaxHighlighter>
-                      ) : (
-                        <code className={className} {...props}>
-                          {children}
-                        </code>
                       );
+                    },
+                    code: (props) => {
+                      const { inline, className, children, ...rest } = props as { inline?: boolean; className?: string; children?: React.ReactNode };
+                      if (inline) {
+                        return (
+                          <code
+                            className={className}
+                            style={{
+                              fontFamily:
+                                "var(--font-geist-mono), 'Fira Mono', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace",
+                              backgroundColor: '#2d2d2d',
+                              padding: '0.2em 0.4em',
+                              borderRadius: '0.3em',
+                              fontSize: '0.9em'
+                            }}
+                            {...rest}
+                          >
+                            {children}
+                          </code>
+                        );
+                      }
+                      return <code {...rest}>{children}</code>;
                     }
                   }}
                 >

@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     if (!apiResponse.ok) {
       const errorText = await apiResponse.text();
-      return new NextResponse(errorText, { status: apiResponse.status });
+      return NextResponse.json({ error: errorText }, { status: apiResponse.status });
     }
 
     const data = await apiResponse.json();
@@ -24,8 +24,8 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Error in proxying to /screen-assist:', error);
     if (error instanceof Error) {
-        return new NextResponse(error.message, { status: 500 });
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return new NextResponse('An unknown error occurred', { status: 500 });
+    return NextResponse.json({ error: 'An unknown error occurred' }, { status: 500 });
   }
 } 

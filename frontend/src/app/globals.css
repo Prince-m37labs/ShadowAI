@@ -215,3 +215,19 @@ body {
 #typewriter-multiline span.filled {
   border-right: none;
 }
+
+div[class*="syntaxhighlighter"], pre, code {
+  font-family: var(--font-geist-mono), 'Fira Mono', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  font-variant-ligatures: none;
+}
+
+/* Force monospace font for all syntax highlighter code blocks */
+div[class*="syntaxhighlighter"], 
+div[class*="syntaxhighlighter"] pre, 
+div[class*="syntaxhighlighter"] code, 
+pre[class*="language-"], 
+code[class*="language-"] {
+  font-family: 'Fira Mono', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace !important;
+  font-variant-ligatures: none !important;
+  font-size: 1em !important;
+}

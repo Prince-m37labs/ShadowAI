@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { HTMLAttributes } from 'react';
 import HomeButton from '../components/HomeButton';
 
@@ -281,19 +282,37 @@ export default function GitOpsPage() {
                 components={{
                   code: ({ inline, className, children, ...props }: CodeComponentProps) => {
                     const match = /language-(\w+)/.exec(className || '');
-                    return !inline && match ? (
-                      <SyntaxHighlighter
-                        language={match[1]}
-                        PreTag="div"
-                        customStyle={{
-                          backgroundColor: '#1e1e1e',
-                          color: '#d4d4d4'
+                    if (!inline) {
+                      return (
+                        <SyntaxHighlighter
+                          language={match ? match[1] : undefined}
+                          style={tomorrow}
+                          PreTag="div"
+                          customStyle={{
+                            fontFamily:
+                              "var(--font-geist-mono), 'Fira Mono', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace",
+                            borderRadius: '0.5rem',
+                            padding: '1rem',
+                            fontSize: '0.9rem'
+                          }}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      );
+                    }
+                    return (
+                      <code
+                        className={className}
+                        style={{
+                          fontFamily:
+                            "var(--font-geist-mono), 'Fira Mono', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace",
+                          backgroundColor: '#2d2d2d',
+                          padding: '0.2em 0.4em',
+                          borderRadius: '0.3em',
+                          fontSize: '0.9em'
                         }}
+                        {...props}
                       >
-                        {String(children).replace(/\n$/, '')}
-                      </SyntaxHighlighter>
-                    ) : (
-                      <code className={className} {...props}>
                         {children}
                       </code>
                     );
